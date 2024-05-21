@@ -1,47 +1,60 @@
 #include "lex.hpp"
+#include "common.hpp"
+#include "errors.hpp"
+#include "modules.hpp"
 
-Token::Token(LexTypes type, std::string_view ident,
-        int line, int col):
+namespace atto {
+
+Token::Token(
+  LexTypes type,
+  std::shared_ptr<const Module> module,
+  std::string_view ident,
+  int line, int col
+):
   _line{line}, _col{col},
-  _lexType{type},
   _ident{ident}
 {
-  switch (_lexType) {
+  switch (type) {
   case LexTypes::Number:
-    _tokType = BuiltinTypes::Num; break;
+    _tokType = LangType::Num; break;
   case LexTypes::String:
-    _tokType = BuiltinTypes::Str; break;
+    _tokType = LangType::Str; break;
   case LexTypes::Ident: {
     auto twoFirst = ident.substr(0,2);
-    if (twoFirst == "fn") _tokType = BuiltinTypes::Fn;
-    else if (twoFirst == "is") _tokType = BuiltinTypes::Is;
-    else if (twoFirst == "if") _tokType = BuiltinTypes::If;
+    if (ident == "true")       _tokType = LangType::Bool;
+    else if (ident == "false") _tokType = LangType::Bool;
+    else if (ident == "null")  _tokType = LangType::Null;
+    else if (twoFirst == "fn") _tokType = LangType::Fn;
+    else if (twoFirst == "is") _tokType = LangType::Is;
+    else if (twoFirst == "if") _tokType = LangType::If;
     else if (twoFirst == "__") {
       auto name = ident.substr(2);
-      if (name == "head")        _tokType = BuiltinTypes::Head;
-      else if (name == "tail")   _tokType = BuiltinTypes::Tail;
-      else if (name == "fuse")   _tokType = BuiltinTypes::Fuse;
-      else if (name == "pair")   _tokType = BuiltinTypes::Pair;
-      else if (name == "litr")   _tokType = BuiltinTypes::Litr;
-      else if (name == "str")    _tokType = BuiltinTypes::Str;
-      else if (name == "words")  _tokType = BuiltinTypes::Words;
-      else if (name == "input")  _tokType = BuiltinTypes::Input;
-      else if (name == "print")  _tokType = BuiltinTypes::Print;
-      else if (name == "eq")     _tokType = BuiltinTypes::Eq;
-      else if (name == "add")    _tokType = BuiltinTypes::Add;
-      else if (name == "neg")    _tokType = BuiltinTypes::Neg;
-      else if (name == "mul")    _tokType = BuiltinTypes::Mul;
-      else if (name == "div")    _tokType = BuiltinTypes::Div;
-      else if (name == "rem")    _tokType = BuiltinTypes::Rem;
-      else if (name == "less")   _tokType = BuiltinTypes::Less;
-      else if (name == "lesseq") _tokType = BuiltinTypes::LessEq;
-      else _tokType = BuiltinTypes::Ident;
-    } else _tokType = BuiltinTypes::Ident;
+      if (name == "head")        _tokType = LangType::Head;
+      else if (name == "tail")   _tokType = LangType::Tail;
+      else if (name == "fuse")   _tokType = LangType::Fuse;
+      else if (name == "pair")   _tokType = LangType::Pair;
+      else if (name == "litr")   _tokType = LangType::Litr;
+      else if (name == "str")    _tokType = LangType::Str;
+      else if (name == "words")  _tokType = LangType::Words;
+      else if (name == "input")  _tokType = LangType::Input;
+      else if (name == "print")  _tokType = LangType::Print;
+      else if (name == "eq")     _tokType = LangType::Eq;
+      else if (name == "add")    _tokType = LangType::Add;
+      else if (name == "neg")    _tokType = LangType::Neg;
+      else if (name == "mul")    _tokType = LangType::Mul;
+      else if (name == "div")    _tokType = LangType::Div;
+      else if (name == "rem")    _tokType = LangType::Rem;
+      else if (name == "less")   _tokType = LangType::Less;
+      else if (name == "lesseq") _tokType = LangType::LessEq;
+      else _tokType = LangType::Ident;
+    } else _tokType = LangType::Ident;
   } break;
   case LexTypes::Default: [[fallthrough]];
   default:
     throw SyntaxError(
-      std::string("Literal not valid: ") + std::string(ident), line, col);
+      std::string("Literal not valid: ") + std::string(ident),
+      module,
+      line, col);
   }
 
 }
@@ -56,7 +69,7 @@ int Token::line() const
   return _line;
 }
 
-BuiltinTypes Token::type() const
+LangType Token::type() const
 {
   return _tokType;
 }
@@ -68,24 +81,17 @@ std::string_view Token::ident() const
 
 std::string_view Token::value() const
 {
-  return _tokType == BuiltinTypes::Str ?
+  return _tokType == LangType::Str ?
     _ident.substr(1,_ident.length() -1) : _ident;
 }
 
-// ---------------------------------------------------
-
-SyntaxError::SyntaxError(std::string what, int line, int col) :
-  what{what}, line{line}, col{col}
-{}
-
 // ----------------------------------------------------
 
-std::vector<std::shared_ptr<Token>> lex(std::string_view code)
-{
+void lex(std::shared_ptr<Module> module, std::size_t from) {
 
-  std::vector<std::shared_ptr<Token>> tokens;
   LexTypes state{LexTypes::Default};
   int lineNr = 1;
+  auto code = module->code().substr(from);
   auto lineBegin = code.begin();
   const char *tokBegin = nullptr,
              *cp = nullptr;
@@ -97,13 +103,14 @@ std::vector<std::shared_ptr<Token>> lex(std::string_view code)
   auto endToken = [&]() {
     auto ident = code.substr(tokBegin - code.begin(), cp - tokBegin);
     int col = static_cast<int>(tokBegin - lineBegin);
-    auto tok = std::make_shared<Token>(state, ident, lineNr, col);
-    tokens.emplace_back(tok);
+    auto tok = std::make_shared<const Token>(state, module, ident, lineNr, col);
+    module->addToken(tok);
     tokBegin = nullptr;
     state = LexTypes::Default;
   };
   auto syntaxError = [&](const std::string &msg){
-    return SyntaxError(msg, lineNr, static_cast<int>(cp - lineBegin));
+    int col = static_cast<int>(cp - lineBegin);
+    return SyntaxError(msg, module, lineNr, col);
   };
 
   bool incr = true, escaped = false;
@@ -114,6 +121,7 @@ std::vector<std::shared_ptr<Token>> lex(std::string_view code)
       continue; // make sure it is not past end()
     if (*cp == '\n') {
       lineNr++; lineBegin = cp+1;
+      if (tokBegin) endToken();
       continue; // make sure it is not past end()
     }
 
@@ -157,6 +165,6 @@ std::vector<std::shared_ptr<Token>> lex(std::string_view code)
   }
 
   if (tokBegin != nullptr) endToken();
-
-  return tokens;
 }
+
+} // namespace atto

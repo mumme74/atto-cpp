@@ -11,7 +11,7 @@ void printHelp()
 }
 
 int main(int argc, const char *argv[]) {
-  Atto engine;
+  atto::Atto engine;
 
   if (argc == 1) {
     engine.repl();
