@@ -16,11 +16,12 @@ class Expr
 protected:
   std::shared_ptr<const Token> _tok;
   LangType _type;
-  std::vector<Expr> _exprs;
+  std::vector<std::shared_ptr<Expr>> _exprs;
+  std::shared_ptr<Module> _module;
 public:
   Expr(std::shared_ptr<const Token> tok,
        LangType type,
-       std::vector<Expr> exprs);
+       std::vector<std::shared_ptr<Expr>> exprs);
   Expr(const Expr& other);
   Expr(Expr&& rhs);
   Expr& operator=(const Expr& other);
@@ -28,8 +29,9 @@ public:
   const Token& token() const;
   LangType type() const;
   bool isFailed() const;
-  const std::vector<Expr>& exprs() const;
+  const std::vector<std::shared_ptr<Expr>>& exprs() const;
   const Expr& operator[](std::size_t idx) const;
+  std::shared_ptr<Module> module() const;
   static Expr mkFailed();
 };
 
@@ -63,12 +65,11 @@ class Func : public Expr
 public:
   Func(std::shared_ptr<const Token> tok,
        std::vector<std::string> args,
-       Expr expr);
+       std::vector<std::shared_ptr<Expr>> exprs);
   Func(const Func& other);
   Func(Func&& rhs);
   Func& operator=(const Func& other);
   Func& operator=(Func&& rhs);
-  const Expr& expr() const;
   const std::vector<std::string>& args() const;
   bool isFailure() const;
 };
@@ -78,13 +79,13 @@ class Call : public Expr
   std::string _fnName;
 public:
   Call(std::shared_ptr<const Token> tok,
-       std::vector<Expr> params,
+       std::vector<std::shared_ptr<Expr>> params,
        std::string fnName);
   Call(const Call& other);
   Call(Call&& rhs);
   Call& operator=(const Call& other);
   Call& operator=(Call&& rhs);
-  const std::vector<Expr>& params() const;
+  const std::vector<std::shared_ptr<Expr>>& params() const;
   std::string_view fnName() const;
 };
 

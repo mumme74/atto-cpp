@@ -20,9 +20,10 @@ std::vector<std::string> split(const std::string& str,
 enum class LangType {
   // The ordering of these must conform to persers requirements
   // single expression
-  Num, // first in 1
-  List, Litr, Words,
+  List, // first in 1
+  Litr, Words,
   Input, Print, Head, Neg,
+  Import,
   Tail, // last in 1
 
 
@@ -36,7 +37,10 @@ enum class LangType {
   If,
 
   // epsilon
-  Value, Bool, Null, Str,
+  Value, // first in epsilon
+  Num, True, False, Null,
+  Str, // last in epsilon
+
   // special epsilon
   Ident,
 

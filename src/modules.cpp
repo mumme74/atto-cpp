@@ -34,8 +34,13 @@ Module::tokens()
   return _tokens;
 }
 
-std::unordered_map<std::string, Func>&
-Module::funcs()
+
+std::unordered_map<std::string,
+  std::pair<std::shared_ptr<Func>, std::vector<std::string>>
+>& Module::funcs()
 {
   return _funcs;
 }
+
+//static
+std::unordered_map<std::string, std::shared_ptr<Module>> Module::allModules{};

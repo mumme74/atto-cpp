@@ -24,8 +24,7 @@ protected:
   std::filesystem::path _replHistoryPath;
   std::istream &_cin;
   std::ostream &_cout, &_cerr;
-  std::string _core_code;
-  std::vector<std::shared_ptr<Module>> _modules;
+  bool _core_loaded;
 public:
   Atto(std::filesystem::path replHistoryPath = ".replHistory",
        std::istream &cin = std::cin,
@@ -36,8 +35,10 @@ public:
   void print(std::string_view msg) const;
   Value input(std::string_view msg) const;
 
-
-  bool execFile(std::filesystem::path path);
+  bool eval(const std::string& code,
+            std::filesystem::path path,
+            std::string modName);
+  bool execFile(std::filesystem::path path, std::string modName = "__main__");
   void repl();
 protected:
   std::string readFile(std::filesystem::path, bool & success);

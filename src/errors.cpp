@@ -51,3 +51,17 @@ int SyntaxError::col() const
 {
   return _col;
 }
+
+// --------------------------------------------------------
+
+ParseError::ParseError(
+  std::string what,
+  std::shared_ptr<const Module> module,
+  int line, int col):
+    SyntaxError{what, module, line, col}
+{}
+
+std::string_view ParseError::typeName() const
+{
+  return "ParseError";
+}

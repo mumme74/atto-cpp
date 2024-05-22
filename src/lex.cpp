@@ -21,12 +21,12 @@ Token::Token(
     _tokType = LangType::Str; break;
   case LexTypes::Ident: {
     auto twoFirst = ident.substr(0,2);
-    if (ident == "true")       _tokType = LangType::Bool;
-    else if (ident == "false") _tokType = LangType::Bool;
+    if (ident == "true")       _tokType = LangType::True;
+    else if (ident == "false") _tokType = LangType::False;
     else if (ident == "null")  _tokType = LangType::Null;
-    else if (twoFirst == "fn") _tokType = LangType::Fn;
-    else if (twoFirst == "is") _tokType = LangType::Is;
-    else if (twoFirst == "if") _tokType = LangType::If;
+    else if (ident == "fn")    _tokType = LangType::Fn;
+    else if (ident == "is")    _tokType = LangType::Is;
+    else if (ident == "if")    _tokType = LangType::If;
     else if (twoFirst == "__") {
       auto name = ident.substr(2);
       if (name == "head")        _tokType = LangType::Head;
@@ -46,6 +46,7 @@ Token::Token(
       else if (name == "rem")    _tokType = LangType::Rem;
       else if (name == "less")   _tokType = LangType::Less;
       else if (name == "lesseq") _tokType = LangType::LessEq;
+      else if (name == "import") _tokType = LangType::Import;
       else _tokType = LangType::Ident;
     } else _tokType = LangType::Ident;
   } break;
@@ -120,8 +121,8 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
     if (*cp == '\r' && *(cp+1) == '\n')
       continue; // make sure it is not past end()
     if (*cp == '\n') {
-      lineNr++; lineBegin = cp+1;
       if (tokBegin) endToken();
+      lineNr++; lineBegin = cp+1;
       continue; // make sure it is not past end()
     }
 
@@ -132,7 +133,10 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
         incr = false;
       }
       else if (isspace(*cp)) ; // intentional nothing
-      else if (*cp == '"') startToken(LexTypes::String);
+      else if (*cp == '"') {
+        ++cp;
+        startToken(LexTypes::String);
+      }
       else if (isdigit(*cp)) startToken(LexTypes::Number);
       else // must be a ident
         startToken(LexTypes::Ident);
@@ -143,7 +147,7 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
         endToken();
       }
       else if (!isalnum(*cp) || *cp == '.')
-        throw syntaxError("Unexpected char in numbers litteral");
+        throw syntaxError("Unexpected char in numbers literal");
       break;
     case LexTypes::String:
       if (!escaped && *cp == '"') endToken();
@@ -159,7 +163,7 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
     case LexTypes::Ident:
       if (isspace(*cp)) endToken();
       else if (!isalpha(*cp) && *cp != '_' && *cp != '-')
-        throw syntaxError("Invalid char in identifer literal");
+        throw syntaxError("Invalid char in identifier literal");
       break;
     }
   }

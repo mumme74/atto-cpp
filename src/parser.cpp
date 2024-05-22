@@ -9,8 +9,16 @@
 
 namespace atto {
 
-Expr::Expr(std::shared_ptr<const Token> tok, LangType type, std::vector<Expr> exprs) :
-  _tok{tok}, _type{type}, _exprs(std::move(exprs))
+// the module being parsed
+std::shared_ptr<Module> curModule;
+
+Expr::Expr(
+  std::shared_ptr<const Token> tok,
+  LangType type,
+  std::vector<std::shared_ptr<Expr>> exprs
+) :
+  _tok{tok}, _type{type}, _exprs{exprs},
+  _module{curModule}
 {}
 
 Expr::Expr(const Expr& other) :
@@ -44,21 +52,30 @@ bool Expr::isFailed() const {
   return _tok->type() == LangType::__Failure;
 }
 
-const std::vector<Expr>& Expr::exprs() const { return _exprs; }
+const std::vector<std::shared_ptr<Expr>>& Expr::exprs() const {
+  return _exprs;
+}
 
 const Expr& Expr::operator[](std::size_t idx) const {
-  return _exprs[idx];
+  return *_exprs[idx];
+}
+
+std::shared_ptr<Module> Expr::module() const
+{
+  return _module;
 }
 
 // static
 Expr Expr::mkFailed() {
-  return Expr{nullptr, LangType::__Failure, std::vector<Expr>{}};
+  return Expr{nullptr, LangType::__Failure,
+            std::vector<std::shared_ptr<Expr>>{}};
 }
+
 
 // --------------------------------------------
 
 ExprValue::ExprValue(std::shared_ptr<const Token> tok, Value value) :
-  Expr{tok, LangType::Value, std::vector<Expr>{}},
+  Expr{tok, LangType::Value, std::vector<std::shared_ptr<Expr>>{}},
   _vlu{std::make_unique<Value>(value).release()}
 {}
 
@@ -76,7 +93,7 @@ Value& ExprValue::value() const { return _vlu ? *_vlu : Value::Null; }
 
 
 ExprIdent::ExprIdent(std::shared_ptr<const Token> tok, std::size_t localIdx) :
-  Expr{tok, LangType::Ident, std::vector<Expr>{}},
+  Expr{tok, LangType::Ident, std::vector<std::shared_ptr<Expr>>{}},
   _localIdx{localIdx}
 {}
 
@@ -106,8 +123,8 @@ std::size_t ExprIdent::localIdx() const { return _localIdx; }
 
 Func::Func(std::shared_ptr<const Token> tok,
       std::vector<std::string> args,
-      Expr expr) :
-  Expr{tok, LangType::Fn, std::vector<Expr>{expr}},
+      std::vector<std::shared_ptr<Expr>> exprs) :
+  Expr{tok, LangType::Fn, exprs},
   _args{args}
 {}
 
@@ -131,8 +148,6 @@ Func& Func::operator=(Func&& rhs) {
   return *this;
 }
 
-const Expr& Func::expr() const { return *_exprs.begin(); }
-
 const std::vector<std::string>& Func::args() const { return _args; }
 
 bool Func::isFailure() const { return _type == LangType::__Failure; }
@@ -140,7 +155,7 @@ bool Func::isFailure() const { return _type == LangType::__Failure; }
 // -----------------------------------------------------------
 
 Call::Call(std::shared_ptr<const Token> tok,
-           std::vector<Expr> params,
+           std::vector<std::shared_ptr<Expr>> params,
            std::string fnName) :
   Expr{tok, LangType::Call, params},
   _fnName{fnName}
@@ -166,7 +181,7 @@ Call& Call::operator=(Call&& rhs) {
   return *this;
 }
 
-const std::vector<Expr>& Call::params() const {
+const std::vector<std::shared_ptr<Expr>>& Call::params() const {
   return _exprs;
 }
 
@@ -174,8 +189,6 @@ std::string_view Call::fnName() const { return _fnName; }
 
 //------------------------------------------------
 // actual parser down below
-
-std::shared_ptr<Module> curModule;
 
 void expect(
   std::string_view msg,
@@ -186,85 +199,106 @@ void expect(
     throw SyntaxError(msg.data(), curModule, tok->line(), tok->col());
 }
 
-
-Expr
-parse_expr(
+std::shared_ptr<Expr> parse_expr(
   std::vector<std::shared_ptr<const Token>>::iterator& tok,
   std::vector<std::shared_ptr<const Token>>::iterator& endTok,
-  std::vector<std::string>& args,
-  std::unordered_map<std::string, std::size_t>& func_def)
+  Module::FuncDef& func_def, int depth = 0)
 {
-  auto beginTok = tok;
+  auto beginTok = *tok;
+  if ((*tok)->type() == LangType::Fn)
+    return nullptr;
+
   auto type = (*tok)->type();
-  std::vector<Expr> exprs;
+  std::vector<std::shared_ptr<Expr>> exprs;
   std::stringstream ss;
-  std::cout << (*tok)->line() << " " <<  (*tok)->ident()<<'\n';
+  std::cout << (*tok)->line() << " " <<  (*tok)->ident() <<" enter: "<<depth<<'\n';
 
   if (tok == endTok)
-    return Expr{*tok, LangType::__Finished, exprs};
+    return std::make_shared<Expr>(*tok, LangType::__Finished, exprs);
 
-  // handle one subthing expressions
+  // handle one sub thing expressions
   if (type >= LangType::Num && type <= LangType::Tail) {
-    exprs.emplace_back(parse_expr(++tok, endTok, args, func_def));
+    exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
+    std::cout << "Leave single out '"<<beginTok->ident()<<"' "<<depth << "\n";
 
   } else if (type >= LangType::Fuse &&
              type <= LangType::LessEq)
   { // handle 2
-    exprs.emplace_back(parse_expr(++tok, endTok, args, func_def));
-    exprs.emplace_back(parse_expr(++tok, endTok, args, func_def));
+    exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
+    exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
+    std::cout << "Leave 2 stuff '"<<beginTok->ident()<<"' "<<depth<<"\n";
 
   } else if (type == LangType::If) {
-    // handle 3 stuff
-    exprs.emplace_back(parse_expr(++tok, endTok, args, func_def));
-    exprs.emplace_back(parse_expr(++tok, endTok, args, func_def));
-    exprs.emplace_back(parse_expr(++tok, endTok, args, func_def));
+    // handle if stuff
+    exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
+    exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
+    //exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
+    std::cout << "leave '"<<beginTok->ident()<<"'"<<depth<<" \n";
     ss << "Expected 'operator first second' as condition to if.";
   } else if (type >= LangType::Value && type <= LangType::Str) {
-    return ExprValue{*beginTok, (*beginTok)->value()};
+    std::cout << "Leave epsilon '"<<beginTok->ident()<<"' " << depth << "\n";
+    return std::make_shared<ExprValue>(beginTok, beginTok->value());
   } else if (type == LangType::Ident) {
+    auto& args = func_def.second;
     auto arg = std::find(args.begin(), args.end(), (*tok)->ident());
     if (arg != args.end()) {
       //found in argument params
-      return ExprIdent(*tok, arg - args.begin());
+      std::cout << "found '" << (*tok)->ident() << "' in args\n";
+      return std::make_shared<ExprIdent>(*tok, arg - args.begin());
     }
     // handle function names lookup
-    auto fn = std::find_if(func_def.begin(), func_def.end(),
-      [&](std::pair<std::string, std::size_t> func){
+    auto lookupFn = [&](
+      std::vector<std::shared_ptr<const Token>>::iterator& tok,
+      std::unordered_map<std::string, Module::FuncDef>& func_defs
+    ){
+      auto fn = std::find_if(func_defs.begin(), func_defs.end(),
+      [&](const auto& func){
         return func.first == (*tok)->ident();
       });
-    if (fn != func_def.end()) {
-      // found in function definitions
-      std::vector<Expr> params;
-      for (std::size_t a; a < fn->second; a++) {
-        Expr e = parse_expr(++tok, endTok, args, func_def);
-        if (e.isFailed()) {
-          ss << "Expected " << fn->second << " arguments in " << fn->first << " call.";
-          break;
+      if (fn != func_defs.end()) {
+        // found in function definitions
+        std::vector<std::shared_ptr<Expr>> params;
+        const auto& args = fn->second.second;
+        std::cout << "args for '" << (*tok)->ident() << "' no args:" << args.size() << '\n';
+        for (const auto& a : args) {
+          std::cout<<"get arg "<<a <<"\n";
+          auto expr = parse_expr(++tok, endTok, func_def, depth+1);
+          if (!expr || expr->isFailed()) {
+            ss << "Expected " << args.size() << " arguments in " << fn->first << " call.";
+            throw ParseError(ss.str(), curModule, (*tok)->line(), (*tok)->col());
+          }
+          params.emplace_back(expr);
         }
-        params.emplace_back(e);
+        return std::make_shared<Call>(beginTok, params, fn->first);
       }
-      return Call{*beginTok, params, fn->first};
+      return std::shared_ptr<Call>{};
+    };
+    auto fnInThisModule = lookupFn(tok, curModule->funcs());
+    if (fnInThisModule) return fnInThisModule;
+    for (const auto& mod : Module::allModules) {
+      auto found = lookupFn(tok, mod.second->funcs());
+      if (found) return found;
     }
 
     // if not found throw error
     ss << "Function " << (*tok)->ident() << " not found.";
-    throw SyntaxError(ss.str(), curModule, (*tok)->line(), (*tok)->col());
+    throw ParseError(ss.str(), curModule, (*tok)->line(), (*tok)->col());
   }
 
-  for (const auto& e : exprs)
-    if (e.isFailed()) {
+  // make sure sure we have expected sub exprs
+  for (const auto& e : exprs) {
+    if (!e || e->isFailed()) {
       auto s = ss.str();
       if (s.length())
-        throw SyntaxError(s, curModule, (*beginTok)->line(), (*beginTok)->col());
-      return Expr::mkFailed();
+        throw SyntaxError(s, curModule, beginTok->line(), beginTok->col());
+      return nullptr;
     }
-  return Expr{*beginTok, type, exprs};
+  }
+  return std::make_shared<Expr>(beginTok, type, exprs);
 }
-
 
 void parse(std::shared_ptr<Module> module, std::size_t fromTok) {
   curModule = module;
-  std::unordered_map<std::string, std::size_t> func_defs;
 
   auto end = module->tokens().end();
   auto tok = module->tokens().begin();
@@ -272,27 +306,35 @@ void parse(std::shared_ptr<Module> module, std::size_t fromTok) {
     ++tok;
 
   for (; tok != end; ++tok) {
-    std::vector<std::string> args;
-    std::vector<Expr> exprs;
-    auto tokBegin = tok;
+    expect("Expected 'fn' keyword.", *tok,  LangType::Fn);
+    auto tokFnName = ++tok;
 
-    expect("Expected fn keyword.", *tok,  LangType::Fn);
-    expect("Expected a function name.", *(++tok), LangType::Ident);
-    auto fnName = (*tok)->ident();
+    expect("Expected function name.", *tokFnName, LangType::Ident);
+    std::string fnName{(*tokFnName)->ident()};
+    std::vector<std::string> args;
+
     // arguments
     while ((*(++tok))->type() != LangType::Is) {
-      expect("Expected a parameter.", *tok, LangType::Ident);
+      expect("Expected parameter.", *tok, LangType::Ident);
       args.emplace_back((*tok)->ident());
     }
-    expect("Expected is keyword", *tok, LangType::Is);
+    expect("Expected 'is' keyword", *tok, LangType::Is);
 
     // store function definition before parsing function body
     // recursive function
-    func_defs[fnName.data()] = args.size();
-    auto expr = parse_expr(++tok, end, args, func_defs);
     module->funcs().emplace(
-      std::pair<std::string, Func>{fnName.data(),
-      Func{*tokBegin, args, expr}});
+      std::pair<std::string, Module::FuncDef>{
+          fnName, std::pair{std::unique_ptr<Func>{}, args}
+        }
+    );
+    auto& func_def = module->funcs()[fnName];
+    std::vector<std::shared_ptr<Expr>> fnExprs;
+    do {
+      std::cout << "parsing fn '" << fnName << "'\n";
+      auto expr = parse_expr(++tok, end, func_def);
+    } while ((tok+1) != end && (*(tok+1))->type() != LangType::Fn);
+    func_def.first =
+      std::make_unique<Func>(*tokFnName, args, fnExprs);
   }
 }
 

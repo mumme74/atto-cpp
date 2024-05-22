@@ -33,6 +33,13 @@ public:
   int col() const;
 };
 
+class ParseError : public SyntaxError {
+public:
+  ParseError(std::string what, std::shared_ptr<const Module> module,
+              int line, int col);
+  virtual std::string_view typeName() const;
+};
+
 } // namespace atto
 
 

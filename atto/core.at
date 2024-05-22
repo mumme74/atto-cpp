@@ -67,6 +67,9 @@ fn input x is
 fn print x is
 	__print x
 
+fn import x is
+	__import x
+
 fn # x y is
 	head pair y x
 

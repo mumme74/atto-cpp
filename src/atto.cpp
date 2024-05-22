@@ -23,13 +23,12 @@ Atto::Atto(std::filesystem::path replHistoryPath,
        std::ostream &cerr) :
   _replHistoryPath{replHistoryPath},
   _cin{cin}, _cout{cout}, _cerr{cerr},
-  _core_code{}
+  _core_loaded{false}
 {
   linenoise::SetMultiLine(true);
   linenoise::LoadHistory(_replHistoryPath.c_str());
 
-  bool success;
-  _core_code = readFile("../atto/core.at", success);
+  _core_loaded = execFile("../atto/core.at", "__core__");
 
   /*linenoise::SetCompletionCallback([](
     std::string editBuffer, std::vector<std::string>& completions)
@@ -59,28 +58,38 @@ Value Atto::input(std::string_view msg) const
   return Value(str);
 }
 
-bool Atto::execFile(std::filesystem::path path)
+bool Atto::execFile(std::filesystem::path path, std::string modName)
 {
-  std::string code;
+  if (!_core_loaded && modName != "__core__")
+    return false;
+  bool success = false;
+  auto code = readFile(path, success);
+  if (success)
+    return eval(code, path, modName);
+
+  return false;
+}
+
+bool Atto::eval(
+  const std::string& code,
+  std::filesystem::path path,
+  std::string modName
+) {
   try {
-    bool success = false;
-    code = _core_code + readFile(path, success);
-    if (success) {
-      auto main = std::make_shared<Module>(path, code);
-      _modules.emplace_back(main);
-      lex(main);
-      parse(main);
-      for (const auto& tok : main->tokens()) {
-        _cout << "line:" << tok->line() << " col: " << tok->col() << " " << tok->ident() << '\n';
-      }
-      for (const auto&f : main->funcs()) {
-        _cout << "func:" << f.first << " \n";
-      }
-      return true;
+    auto mod = std::make_shared<Module>(path, code);
+    Module::allModules[modName] = mod;
+    lex(mod);
+    parse(mod);
+    for (const auto& tok : mod->tokens()) {
+      _cout << "line:" << tok->line() << " col: " << tok->col() << " " << tok->ident() << '\n';
     }
-  } catch (SyntaxError &e) {
+    for (const auto&f : mod->funcs()) {
+      _cout << "func:" << f.first << " \n";
+    }
+    return true;
+  } catch (const SyntaxError &e) {
     auto lines = split(code, "\n");
-    _cerr << e.typeName() << ":\n"
+    _cerr << e.typeName() << ": in " << e.module()->path() << "\n"
           << e.what() << " at line " << e.line() << " col " << e.col() << '\n'
           << lines[e.line()-1] << '\n' << std::setw(e.col()+1) << '^' << "\n";
   }
@@ -94,7 +103,7 @@ void Atto::repl()
         << "The core library is included by default.\n";
 
   auto main = std::make_shared<Module>("","");
-  _modules.emplace_back(main);
+  Module::allModules["__main__"] = main;
 
   std::size_t from = 0;
   std::string line;
