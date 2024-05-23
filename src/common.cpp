@@ -1,5 +1,6 @@
 #include "common.hpp"
 #include "errors.hpp"
+#include <sstream>
 
 
 namespace atto {
@@ -18,7 +19,10 @@ std::string_view trim(std::string_view str) {
   return rtrim(ltrim(str));
 }
 
-std::vector<std::string> split(const std::string& str, const std::string& delim) {
+std::vector<std::string> split(
+  const std::string& str,
+  const std::string& delim
+) {
   std::vector<std::string> parts;
   std::string::size_type pos = 0;
   std::string::size_type prev = 0;
@@ -29,6 +33,23 @@ std::vector<std::string> split(const std::string& str, const std::string& delim)
 
   parts.emplace_back( str.substr(prev));
   return parts;
+}
+
+
+std::string join(
+  const std::vector<std::string>& parts,
+  const std::string& joiner)
+{
+  if (parts.size() == 0)
+    return "";
+
+  std::stringstream ss;
+  auto it = parts.begin();
+  ss << *it;
+  for (; it != parts.end(); ++it)
+    ss << joiner << *it;
+
+  return ss.str();
 }
 
 } // namespace atto

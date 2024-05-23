@@ -13,7 +13,9 @@ std::string_view rtrim(std::string_view str);
 std::string_view ltrim(std::string_view str);
 std::string_view trim(std::string_view str);
 std::vector<std::string> split(const std::string& str,
-                              const std::string& delim);
+                               const std::string& delim);
+std::string join(const std::vector<std::string>& parts,
+                 const std::string& joiner = ",");
 
 // ---------------------------------------------------------
 

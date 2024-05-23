@@ -23,7 +23,7 @@ Atto::Atto(std::filesystem::path replHistoryPath,
        std::ostream &cerr) :
   _replHistoryPath{replHistoryPath},
   _cin{cin}, _cout{cout}, _cerr{cerr},
-  _core_loaded{false}
+  _core_loaded{false}, vm{}
 {
   linenoise::SetMultiLine(true);
   linenoise::LoadHistory(_replHistoryPath.c_str());
@@ -44,18 +44,6 @@ Atto::~Atto()
 {
   linenoise::SaveHistory(_replHistoryPath.c_str());
   linenoise::linenoiseAtExit();
-}
-
-void Atto::print(std::string_view msg) const
-{
-  _cout << msg;
-}
-
-Value Atto::input(std::string_view msg) const
-{
-  auto str = linenoise::Readline(msg.begin());
-  linenoise::AddHistory(str.c_str());
-  return Value(str);
 }
 
 bool Atto::execFile(std::filesystem::path path, std::string modName)
@@ -86,6 +74,13 @@ bool Atto::eval(
     for (const auto&f : mod->funcs()) {
       _cout << "func:" << f.first << " \n";
     }
+    const auto& main = mod->funcs()["main"].first;
+    if (main) {
+      const std::vector<Value> args;
+      for (const auto& expr : main->exprs())
+        vm.eval(*expr.get(), main->module()->funcs(), args);
+    }
+
     return true;
   } catch (const SyntaxError &e) {
     auto lines = split(code, "\n");

@@ -11,6 +11,7 @@
 #include "common.hpp"
 #include "modules.hpp"
 #include "values.hpp"
+#include "vm.hpp"
 
 namespace atto {
 
@@ -25,15 +26,13 @@ protected:
   std::istream &_cin;
   std::ostream &_cout, &_cerr;
   bool _core_loaded;
+  Vm vm;
 public:
   Atto(std::filesystem::path replHistoryPath = ".replHistory",
        std::istream &cin = std::cin,
        std::ostream &cout = std::cout,
        std::ostream &cerr = std::cerr);
-  virtual ~Atto();
-
-  void print(std::string_view msg) const;
-  Value input(std::string_view msg) const;
+  ~Atto();
 
   bool eval(const std::string& code,
             std::filesystem::path path,

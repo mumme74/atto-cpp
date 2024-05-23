@@ -34,6 +34,7 @@ public:
   void addToken(std::shared_ptr<const Token> &tok);
   std::vector<std::shared_ptr<const Token>>& tokens();
   std::unordered_map<std::string, FuncDef>& funcs();
+  std::unordered_map<std::string, std::shared_ptr<Module>> imported;
 
   static
   std::unordered_map<std::string, std::shared_ptr<Module>> allModules;

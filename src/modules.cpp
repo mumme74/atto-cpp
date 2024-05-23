@@ -3,7 +3,7 @@
 using namespace atto;
 
 Module::Module(std::filesystem::path path, std::string code) :
-  _path{path}, _code{code}
+  _path{path}, _code{code}, imported{}
 {}
 
 Module::~Module() { }

@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <variant>
+#include <memory>
 
 namespace atto {
 
@@ -31,9 +32,16 @@ public:
   Value& operator=(Value&& rhs);
   bool operator==(const Value& other) const;
   bool operator>(const Value& other) const;
+  bool operator>=(const Value& other) const;
+  Value operator+(const Value& other) const;
+  Value operator-(const Value& other) const;
+  Value operator/(const Value& other) const;
+  Value operator*(const Value& other) const;
+  Value operator%(const Value& other) const;
+  Value operator!() const;
 
   ValueTypes type() const;
-  bool asBool() const;
+  bool toBool() const;
   double asNum() const;
   std::string asStr() const;
   std::vector<Value> asList() const;
@@ -47,7 +55,8 @@ public:
   static Value from_str(std::string str);
   std::string_view into_str() const;
 
-  static Value Null;
+  static Value& Null;
+  static std::shared_ptr<Value> Null_ptr;
 };
 
 } // namespace atto
