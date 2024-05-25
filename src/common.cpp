@@ -126,9 +126,10 @@ std::vector<std::string> utf8_words(const std::string& str)
 
   for (; cp < end; ++cp) {
     if (!multibyte && isspace(*cp)) {
-      n = static_cast<std::size_t>(cp-start);
-      words.emplace_back(str.substr(pos, n));
-      pos += n;
+      n = static_cast<std::size_t>(cp-start) - pos;
+      if (n > 0)
+        words.emplace_back(str.substr(pos, n));
+      pos += n+1;
     }
     multibyte = (*cp & 0x80) != 0;
   }

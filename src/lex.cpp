@@ -126,7 +126,7 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
     incr = true;
     if (*cp == '\r' && *(cp+1) == '\n')
       continue; // make sure it is not past end()
-    if (*cp == '\n') {
+    if (*cp == '\n' && state != LexTypes::String) {
       if (tokBegin) endToken();
       lineNr++; lineBegin = cp+1;
       continue; // make sure it is not past end()
@@ -157,8 +157,10 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
         throw syntaxError("Unexpected char in numbers literal");
       break;
     case LexTypes::String:
-      if (!escaped && *cp == '"') endToken();
-      else if (*cp == '\0') throw syntaxError("Invalid null char in string");
+      if (!escaped && *cp == '"')
+        endToken();
+      else if (*cp == '\0')
+        throw syntaxError("Invalid null char in string");
       else if (*cp == '\\') {
         escaped = true;
         continue;

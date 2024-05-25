@@ -68,12 +68,6 @@ bool Atto::eval(
     Module::allModules[modName] = mod;
     lex(mod);
     parse(mod);
-    /*for (const auto& tok : mod->tokens()) {
-      _cout << "line:" << tok->line() << " col: " << tok->col() << " " << tok->ident() << '\n';
-    }
-    for (const auto&f : mod->funcs()) {
-      _cout << "func:" << f.first << " \n";
-    }*/
     const auto& main = mod->funcs()["main"].first;
     if (main) {
       const std::vector<std::shared_ptr<const Value>> args;
@@ -105,12 +99,7 @@ void Atto::repl()
   while (!(quit = linenoise::Readline(">>", line)) && !quit) {
     linenoise::AddHistory(line.c_str());
     if (line == "quit()") break;
-    std::size_t fromTok = main->tokens().size();
-    main->appendCode(line);
-    lex(main, from);
-    parse(main, fromTok);
-    from += line.size();
-    _cout << "got tokens\n";
+    eval(line, "", "__main__");
   }
 }
 
