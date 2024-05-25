@@ -1,0 +1,49 @@
+__import "gameplaces.at"
+
+fn gen_map is
+	# "Generate the static map data. Used on start. Produces a list of locations."
+	# "Each location looks like this: [ID, DESCRIPTION, [COMMAND, TARGET, ...]]"
+	# "Each command/target pair determine a valid place to go to e.g: 'north' and '0' (the ID of the beach)"
+	fuse wrap beach
+	fuse wrap town
+		 wrap harbour
+
+fn get_desc loc map is
+	# "Return the description of a given location, if it exists"
+	if = empty map
+		"I don't know where you are!"
+	if = loc head head map
+		nth 1 head map
+	get_desc loc tail map
+
+fn get_target dir default targets is
+	# "Given a directional command, return the new location ID if it exists in the current list of location targets. If not, return the default"
+	if = empty targets
+		# print "I don't understand! Perhaps try a compass direction?"
+		default
+	if = dir head targets
+		nth 1 targets
+	get_target dir default tail targets
+
+fn parse_cmd loc cmd map is
+	# "Take a user command and changes the location if appropriate"
+	# "Will return the new location"
+
+	if = empty map
+		loc
+	if = loc head head map
+		get_target
+			head cmd
+			loc
+			nth 2 head map
+	parse_cmd loc cmd tail map
+
+fn game_loop loc map is
+	# "Keep describing location, asking for a user command, recursive"
+	# print get_desc loc map
+	game_loop
+		parse_cmd
+			loc
+			words input "What now? "
+			map
+		map

@@ -1,0 +1,5 @@
+__import "lib/game.at"
+
+fn main is
+	# "Generate the static map data and get running the game!"
+	game_loop 0 gen_map
