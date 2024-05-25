@@ -74,7 +74,7 @@ std::shared_ptr<const Value> Vm::eval(
     if (v->isList())
       return std::make_shared<Value>(v->asList().front().clone());
     else if (v->isStr()) {
-      return std::make_shared<Value>(v->asStr().substr(0,1));
+      return std::make_shared<Value>(utf8_substr(v->asStr(), 0, 1));
     }
     return std::make_shared<Value>(*v);
   }
@@ -90,7 +90,7 @@ std::shared_ptr<const Value> Vm::eval(
     } else if (v->isStr()) {
       const auto& s = v->asStr();
       if (s.size() < 2) return Value::Null_ptr;
-      return std::make_shared<Value>(v->asStr().substr(1));
+      return std::make_shared<Value>(utf8_substr(v->asStr(), 1));
     }
     return std::make_shared<Value>(*v);
   }

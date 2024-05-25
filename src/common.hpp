@@ -16,6 +16,9 @@ std::vector<std::string> split(const std::string& str,
                                const std::string& delim);
 std::string join(const std::vector<std::string>& parts,
                  const std::string& joiner = ",");
+std::string utf8_substr(const std::string& str,
+                        std::size_t from = 0,
+                        std::size_t ulen = std::string::npos);
 
 // ---------------------------------------------------------
 

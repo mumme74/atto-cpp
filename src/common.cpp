@@ -91,4 +91,28 @@ std::string join(
   return ss.str();
 }
 
+
+std::string utf8_substr(const std::string& str,
+                        std::size_t from,
+                        std::size_t len)
+{
+    std::size_t ufrom = 0, ulen = 0;
+    const char *start = str.c_str(),
+               *cp = start,
+               *end = start + str.size();
+
+    for (; cp < end; cp++) {
+        if((*cp & 0x80) != 0) {
+            if (from+ufrom > static_cast<std::size_t>(cp-start))
+              ufrom += 1;
+            else
+              ulen += 1;
+        }
+        if(len+ulen >= static_cast<std::size_t>(cp-start))
+            break;
+    }
+
+    return str.substr(from+ufrom, len+ulen);
+}
+
 } // namespace atto
