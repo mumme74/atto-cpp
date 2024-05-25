@@ -5,6 +5,44 @@
 
 namespace atto {
 
+std::string_view typeName(LangType type)
+{
+  switch (type) {
+  case LangType::List:   return "List";
+  case LangType::Litr:   return "Litr";
+  case LangType::Words:  return "Words";
+  case LangType::Input:  return "Input";
+  case LangType::Print:  return "Print";
+  case LangType::Head:   return "Head";
+  case LangType::Neg:    return "Neg";
+  case LangType::Import: return "Import";
+  case LangType::Tail:   return "Tail";
+  case LangType::Fuse:   return "Fuse";
+  case LangType::Pair:   return "Pair";
+  case LangType::Eq:     return "Eq";
+  case LangType::Add:    return "Add";
+  case LangType::Mul:    return "Mul";
+  case LangType::Div:    return "Div";
+  case LangType::Rem:    return "Rem";
+  case LangType::Less:   return "Less";
+  case LangType::LessEq: return "LessEq";
+  case LangType::If:     return "If";
+  case LangType::Value:  return "Value";
+  case LangType::Num:    return "Num";
+  case LangType::True:   return "True";
+  case LangType::False:  return "False";
+  case LangType::Null:   return "Null";
+  case LangType::Str:    return "Str";
+  case LangType::Ident:  return "Ident";
+  case LangType::Fn:     return "Fn";
+  case LangType::Is:     return "Is";
+  case LangType::Call:   return "call";
+  case LangType::__Failure:  return "__Failure";
+  case LangType::__Finished: return "__Finished";
+  }
+  return "_unhandled_LangType";
+}
+
 // ----------------------------------
 // string stuff
 
@@ -45,7 +83,7 @@ std::string join(
 
   std::stringstream ss;
   auto it = parts.begin();
-  ss << *it;
+  ss << *it++;
   for (; it != parts.end(); ++it)
     ss << joiner << *it;
 

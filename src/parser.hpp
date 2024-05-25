@@ -71,7 +71,7 @@ public:
   Func& operator=(const Func& other);
   Func& operator=(Func&& rhs);
   const std::vector<std::string>& args() const;
-  bool isFailure() const;
+  std::string_view fnName() const;
 };
 
 class Call : public Expr
@@ -80,7 +80,8 @@ class Call : public Expr
 public:
   Call(std::shared_ptr<const Token> tok,
        std::vector<std::shared_ptr<Expr>> params,
-       std::string fnName);
+       std::string fnName,
+       std::shared_ptr<Module> module);
   Call(const Call& other);
   Call(Call&& rhs);
   Call& operator=(const Call& other);

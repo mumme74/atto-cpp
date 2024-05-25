@@ -59,6 +59,8 @@ enum class LexTypes {
   Default, Number, String, Ident
 };
 
+std::string_view typeName(LangType type);
+
 } // namespace atto
 
 

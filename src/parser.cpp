@@ -148,18 +148,27 @@ Func& Func::operator=(Func&& rhs) {
   return *this;
 }
 
-const std::vector<std::string>& Func::args() const { return _args; }
+const std::vector<std::string>& Func::args() const {
+  return _args;
+}
 
-bool Func::isFailure() const { return _type == LangType::__Failure; }
-
+std::string_view Func::fnName() const
+{
+  return (_tok)->ident();
+}
 // -----------------------------------------------------------
 
-Call::Call(std::shared_ptr<const Token> tok,
-           std::vector<std::shared_ptr<Expr>> params,
-           std::string fnName) :
+Call::Call(
+  std::shared_ptr<const Token> tok,
+  std::vector<std::shared_ptr<Expr>> params,
+  std::string fnName,
+  std::shared_ptr<Module> module
+) :
   Expr{tok, LangType::Call, params},
   _fnName{fnName}
-{}
+{
+  _module = module;
+}
 
 Call::Call(const Call& other) :
   Expr{other}, _fnName{other._fnName}
@@ -217,7 +226,7 @@ std::shared_ptr<Expr> parse_expr(
     return std::make_shared<Expr>(*tok, LangType::__Finished, exprs);
 
   // handle one sub thing expressions
-  if (type >= LangType::Num && type <= LangType::Tail) {
+  if (type >= LangType::List && type <= LangType::Tail) {
     exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
     //std::cout << "Leave single out '"<<beginTok->ident()<<"' "<<depth << "\n";
 
@@ -237,7 +246,7 @@ std::shared_ptr<Expr> parse_expr(
     ss << "Expected 'operator first second' as condition to if.";
   } else if (type >= LangType::Value && type <= LangType::Str) {
     //std::cout << "Leave epsilon '"<<beginTok->ident()<<"' " << depth << "\n";
-    return std::make_shared<ExprValue>(beginTok, beginTok->value());
+    return std::make_shared<ExprValue>(beginTok, Value(*beginTok));
   } else if (type == LangType::Ident) {
     auto& args = func_def.second;
     auto arg = std::find(args.begin(), args.end(), (*tok)->ident());
@@ -249,8 +258,10 @@ std::shared_ptr<Expr> parse_expr(
     // handle function names lookup
     auto lookupFn = [&](
       std::vector<std::shared_ptr<const Token>>::iterator& tok,
-      std::unordered_map<std::string, Module::FuncDef>& func_defs
+      std::shared_ptr<Module> module
     ){
+      std::unordered_map<std::string, Module::FuncDef>&
+        func_defs = module->funcs();
       auto fn = std::find_if(func_defs.begin(), func_defs.end(),
       [&](const auto& func){
         return func.first == (*tok)->ident();
@@ -270,20 +281,20 @@ std::shared_ptr<Expr> parse_expr(
           }
           params.emplace_back(expr);
         }
-        return std::make_shared<Call>(beginTok, params, fn->first);
+        return std::make_shared<Call>(beginTok, params, fn->first, module);
       }
       return std::shared_ptr<Call>{};
     };
     // search in core or this module
     const auto core = lookupFn(
-      tok, Module::allModules["__core__"]->funcs());
+      tok, Module::allModules["__core__"]);
     if (core) return core;
-    const auto thisMod = lookupFn(tok, curModule->funcs());
+    const auto thisMod = lookupFn(tok, curModule);
     if (thisMod) return thisMod;
 
     // search in imported modules
     for (const auto& mod : curModule->imported) {
-      auto found = lookupFn(tok, mod.second->funcs());
+      auto found = lookupFn(tok, mod.second);
       if (found) return found;
     }
 
@@ -339,6 +350,7 @@ void parse(std::shared_ptr<Module> module, std::size_t fromTok) {
     do {
       //std::cout << "parsing fn '" << fnName << "'\n";
       auto expr = parse_expr(++tok, end, func_def);
+      fnExprs.emplace_back(expr);
     } while ((tok+1) != end && (*(tok+1))->type() != LangType::Fn);
 
     func_def.first =

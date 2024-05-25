@@ -76,9 +76,8 @@ bool Atto::eval(
     }
     const auto& main = mod->funcs()["main"].first;
     if (main) {
-      const std::vector<Value> args;
-      for (const auto& expr : main->exprs())
-        vm.eval(*expr.get(), main->module()->funcs(), args);
+      const std::vector<std::shared_ptr<Value>> args;
+      vm.eval(*main, main->module()->funcs(), args);
     }
 
     return true;

@@ -6,6 +6,7 @@
 #include <vector>
 #include <variant>
 #include <memory>
+#include "lex.hpp"
 
 namespace atto {
 
@@ -20,6 +21,7 @@ protected:
     double, std::string, bool, std::vector<Value>, void*> _vlu;
 public:
   Value(const Value& other);
+  Value(const Token& tok);
   Value(Value&& rhs);
   Value(); // null
   Value(double value);
@@ -39,12 +41,18 @@ public:
   Value operator*(const Value& other) const;
   Value operator%(const Value& other) const;
   Value operator!() const;
+  Value neg() const;
 
   ValueTypes type() const;
-  bool toBool() const;
+  std::string_view typeName() const;
+  bool asBool() const;
   double asNum() const;
   std::string asStr() const;
   std::vector<Value> asList() const;
+
+  const Value& at(std::size_t idx) const;
+
+  Value clone() const;
 
   bool isNull() const { return _type == ValueTypes::Null; }
   bool isBool() const { return _type == ValueTypes::Bool; }

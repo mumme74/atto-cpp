@@ -20,7 +20,7 @@ public:
   std::shared_ptr<Value> eval(
     const Expr& expr,
     const std::unordered_map<std::string, Module::FuncDef>& funcs,
-    const std::vector<Value>& args);
+    const std::vector<std::shared_ptr<Value>>& args);
 };
 
 } // namespace atto

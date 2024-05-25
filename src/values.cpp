@@ -10,6 +10,28 @@ Value::Value(const Value& other) :
   _type{other._type}, _vlu{other._vlu}
 {}
 
+Value::Value(const Token& tok)
+{
+  switch (tok.type()) {
+  case LangType::True: [[fallthrough]];
+  case LangType::False:
+    _type = ValueTypes::Bool;
+    _vlu = tok.value() == "true";
+    break;
+  case LangType::Num:
+    _type = ValueTypes::Num;
+    _vlu = std::stod(std::string(tok.value()));
+    break;
+  case LangType::Str:
+    _type = ValueTypes::Str;
+    _vlu = std::string(tok.value());
+    break;
+  case LangType::Null:  [[fallthrough]];
+  default:
+    _type = ValueTypes::Null; break;
+  }
+}
+
 Value::Value(Value&& rhs) :
   _type{std::move(rhs._type)}, _vlu{std::move(rhs._vlu)}
 {}
@@ -55,10 +77,12 @@ bool Value::operator==(const Value& other) const
   if (_type != other._type) return false;
   switch (_type) {
   case ValueTypes::Null: return true;
-  case ValueTypes::Bool: [[fallthrough]];
-  case ValueTypes::Str: [[fallthrough]];
-  case ValueTypes::Num:
+  case ValueTypes::Bool:
     return std::get<bool>(_vlu) == std::get<bool>(other._vlu);
+  case ValueTypes::Str:
+    return std::get<std::string>(_vlu) == std::get<std::string>(other._vlu);
+  case ValueTypes::Num:
+    return std::get<double>(_vlu) == std::get<double>(other._vlu);
   case ValueTypes::List: return false;
   }
   return false;
@@ -87,8 +111,8 @@ bool Value::operator>=(const Value& other) const
 
 Value Value::operator+(const Value& other) const
 {
-  if (_type == ValueTypes::Num && other._type == ValueTypes::Num){
-    return Value{std::get<double>(_vlu) + std::get<double>(_vlu)};
+  if (_type == ValueTypes::Num && other._type == ValueTypes::Num) {
+    return Value{std::get<double>(_vlu) + std::get<double>(other._vlu)};
   } else if (_type == ValueTypes::Str && other._type == ValueTypes::Str) {
     return Value{std::get<std::string>(_vlu) + std::get<std::string>(other._vlu)};
   }
@@ -132,7 +156,8 @@ Value Value::operator%(const Value& other) const
 Value Value::operator!() const
 {
   switch (_type) {
-  case ValueTypes::Bool: [[fallthrough]];
+  case ValueTypes::Bool:
+    return Value{!std::get<bool>(_vlu)};
   case ValueTypes::Num:
     return Value{!std::get<double>(_vlu)};
   case ValueTypes::Str:
@@ -144,9 +169,66 @@ Value Value::operator!() const
   }
 }
 
+Value Value::neg() const
+{
+  switch (_type) {
+  case ValueTypes::Num: return Value(-asNum());
+  default: return Value::Null;
+  }
+}
+
 ValueTypes Value::type() const
 {
   return _type;
+}
+
+std::string_view Value::typeName() const
+{
+  switch (_type) {
+  case ValueTypes::Null: return "Null";
+  case ValueTypes::Bool: return "Bool";
+  case ValueTypes::Str:  return "Str";
+  case ValueTypes::Num:  return "Num";
+  case ValueTypes::List: return "List";
+  }
+  return "_wrongType";
+}
+
+
+bool Value::asBool() const
+{
+  switch(_type) {
+  case ValueTypes::Bool: return std::get<bool>(_vlu);
+  case ValueTypes::Null: return false;
+  case ValueTypes::Num:  return std::get<double>(_vlu) != 0.0;
+  case ValueTypes::Str:  return std::get<std::string>(_vlu).size() > 0;
+  case ValueTypes::List: return std::get<std::vector<Value>>(_vlu).size() > 0;
+  }
+  return false;
+}
+
+double Value::asNum() const
+{
+  switch(_type) {
+  case ValueTypes::Bool: return std::get<bool>(_vlu) ? 1.0 : 0.0;
+  case ValueTypes::Null: return 0.0;
+  case ValueTypes::Num:  return std::get<double>(_vlu);
+  case ValueTypes::Str:  return std::stod(std::get<std::string>(_vlu));
+  case ValueTypes::List: return std::get<std::vector<Value>>(_vlu).size();
+  }
+  return 0.0;
+}
+
+std::vector<Value> Value::asList() const
+{
+  switch(_type) {
+  case ValueTypes::Bool:
+  case ValueTypes::Null:
+  case ValueTypes::Num:  [[fallthrough]];
+  case ValueTypes::Str:  return std::vector<Value>{*this};
+  case ValueTypes::List: return std::get<std::vector<Value>>(_vlu);
+  }
+  return std::vector<Value>{};
 }
 
 std::string Value::asStr() const
@@ -167,6 +249,36 @@ std::string Value::asStr() const
     return join(parts);
   }
   }
+  return "";
+}
+
+const Value& Value::at(std::size_t idx) const
+{
+  if (isList()) {
+    auto& l = std::get<std::vector<Value>>(_vlu);
+    if (l.size() > idx)
+      return l[idx];
+  }
+  return Value::Null;
+}
+
+Value Value::clone() const
+{
+  switch (_type) {
+  case ValueTypes::Null: return Value::Null;
+  case ValueTypes::Bool: return Value(std::get<bool>(_vlu));
+  case ValueTypes::Num:  return Value(std::get<double>(_vlu));
+  case ValueTypes::Str:  return Value(std::get<std::string>(_vlu));
+  case ValueTypes::List: {
+    const auto& me = std::get<std::vector<Value>>(_vlu);
+    std::vector<Value> list;
+    list.reserve(me.size());
+    for(const auto& itm : me)
+      list.emplace_back(itm.clone());
+    return Value(list);
+  }
+  }
+  return Value::Null;
 }
 
 Value Value::from_str(std::string str)
