@@ -28,10 +28,11 @@ std::string_view typeName(LangType type)
   case LangType::LessEq: return "LessEq";
   case LangType::If:     return "If";
   case LangType::Value:  return "Value";
-  case LangType::Num:    return "Num";
-  case LangType::True:   return "True";
-  case LangType::False:  return "False";
-  case LangType::Null:   return "Null";
+  case LangType::Num_litr:    return "Num_litr";
+  case LangType::True_litr:   return "True_litr";
+  case LangType::False_litr:  return "False_litr";
+  case LangType::Null_litr:   return "Null_litr";
+  case LangType::Str_litr:    return "Str_litr";
   case LangType::Str:    return "Str";
   case LangType::Ident:  return "Ident";
   case LangType::Fn:     return "Fn";

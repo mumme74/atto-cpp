@@ -16,14 +16,14 @@ Token::Token(
 {
   switch (type) {
   case LexTypes::Number:
-    _tokType = LangType::Num; break;
+    _tokType = LangType::Num_litr; break;
   case LexTypes::String:
-    _tokType = LangType::Str; break;
+    _tokType = LangType::Str_litr; break;
   case LexTypes::Ident: {
     auto twoFirst = ident.substr(0,2);
-    if (ident == "true")       _tokType = LangType::True;
-    else if (ident == "false") _tokType = LangType::False;
-    else if (ident == "null")  _tokType = LangType::Null;
+    if (ident == "true")       _tokType = LangType::True_litr;
+    else if (ident == "false") _tokType = LangType::False_litr;
+    else if (ident == "null")  _tokType = LangType::Null_litr;
     else if (ident == "fn")    _tokType = LangType::Fn;
     else if (ident == "is")    _tokType = LangType::Is;
     else if (ident == "if")    _tokType = LangType::If;
@@ -136,6 +136,7 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
       else if (*cp == '"') {
         ++cp;
         startToken(LexTypes::String);
+        if (*cp == '"') endToken(); // special case empty string
       }
       else if (isdigit(*cp)) startToken(LexTypes::Number);
       else // must be a ident

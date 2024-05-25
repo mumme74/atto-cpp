@@ -68,15 +68,15 @@ bool Atto::eval(
     Module::allModules[modName] = mod;
     lex(mod);
     parse(mod);
-    for (const auto& tok : mod->tokens()) {
+    /*for (const auto& tok : mod->tokens()) {
       _cout << "line:" << tok->line() << " col: " << tok->col() << " " << tok->ident() << '\n';
     }
     for (const auto&f : mod->funcs()) {
       _cout << "func:" << f.first << " \n";
-    }
+    }*/
     const auto& main = mod->funcs()["main"].first;
     if (main) {
-      const std::vector<std::shared_ptr<Value>> args;
+      const std::vector<std::shared_ptr<const Value>> args;
       vm.eval(*main, main->module()->funcs(), args);
     }
 

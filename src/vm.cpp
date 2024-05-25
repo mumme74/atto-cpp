@@ -3,6 +3,9 @@
 #include "lib/linenoise.hpp"
 #include <iostream>
 
+//#define DEBUG(x) do { std::cerr << x; } while (0)
+#define DEBUG(x)
+
 namespace atto {
 
 Vm::Vm() {}
@@ -11,7 +14,7 @@ Vm::~Vm() {}
 
 void Vm::print(std::string_view msg) const
 {
-  std::cout << msg;
+  std::cout << msg << std::endl;
 }
 
 Value Vm::input(std::string_view msg) const
@@ -21,10 +24,10 @@ Value Vm::input(std::string_view msg) const
   return Value(str);
 }
 
-std::shared_ptr<Value> Vm::eval(
+std::shared_ptr<const Value> Vm::eval(
   const Expr& expr,
   const std::unordered_map<std::string, Module::FuncDef>& funcs,
-  const std::vector<std::shared_ptr<Value>>& args
+  const std::vector<std::shared_ptr<const Value>>& args
 ) {
   switch (expr.type()) {
   case LangType::If:
@@ -79,11 +82,14 @@ std::shared_ptr<Value> Vm::eval(
     auto v = eval(*expr.exprs()[0], funcs, args);
     if (v->isList()) {
       const auto& l = v->asList();
-      std::vector<Value> list; list.reserve(l.size());
-      for (const auto& v : l)
-        list.emplace_back(v.clone());
+      if (l.size() < 2) return Value::Null_ptr;
+      std::vector<Value> list; list.reserve(l.size()-1);
+      for (auto it = l.begin()+1; it!=l.end(); ++it)
+        list.emplace_back(it->clone());
       return std::make_shared<Value>(std::move(list));
     } else if (v->isStr()) {
+      const auto& s = v->asStr();
+      if (s.size() < 2) return Value::Null_ptr;
       return std::make_shared<Value>(v->asStr().substr(1));
     }
     return std::make_shared<Value>(*v);
@@ -121,14 +127,14 @@ std::shared_ptr<Value> Vm::eval(
   case LangType::Print: {
     auto e = eval(*expr.exprs()[0], funcs, args);
     print(e->asStr());
-    return Value::Null_ptr;
+    return e;
   }
   case LangType::Call: {
     auto call = static_cast<const Call*>(&expr);
     std::string fnName = std::string(call->fnName());
     const auto& fn = call->module()->funcs()[fnName].first;
     if (fn) {
-      std::vector<std::shared_ptr<Value>> params;
+      std::vector<std::shared_ptr<const Value>> params;
       params.reserve(args.size());
       for (const auto& e : expr.exprs())
         params.emplace_back(eval(*e, funcs, args));
@@ -138,29 +144,45 @@ std::shared_ptr<Value> Vm::eval(
   }
   case LangType::Fn: {
     auto fn = static_cast<const Func*>(&expr);
-    std::shared_ptr<Value> last;
-    std::cout << "Entering fn " << fn->fnName()
-              << " " << join(fn->args(), ", ") << "\n";
+    std::shared_ptr<const Value> last;
+    DEBUG("Entering fn " << fn->fnName()
+              << " " << join(fn->args(), ", ") << "\n");
     for (const auto& e : fn->exprs())
       last = eval(*e, funcs, args);
-    std::cout << "Leave fn " << fn->fnName() << " with value "
-              << last->asStr() << "\n";
+    DEBUG("Leave fn " << fn->fnName() << " with value "
+              << last->asStr() << " type:" << last->typeName() << "\n");
     return last;
   }
-  case LangType::Null: return Value::Null_ptr;
-  case LangType::Value:
-  case LangType::Num:
-  case LangType::True: case LangType::False:
-  case LangType::List: [[fallthrough]];
-  case LangType::Str: {
+  case LangType::Null_litr: return Value::Null_ptr;
+  case LangType::Value: {
     const auto& exprVlu = static_cast<const ExprValue*>(&expr);
     return std::make_shared<Value>(exprVlu->value());
+  }
+  case LangType::Num_litr:{
+    const auto& exprVlu = static_cast<const ExprValue*>(&expr);
+    return std::make_shared<Value>(exprVlu->value().asNum());
+  }
+  case LangType::True_litr: case LangType::False_litr: {
+    const auto& exprVlu = static_cast<const ExprValue*>(&expr);
+    return std::make_shared<Value>(exprVlu->value().asBool());
+  }
+  case LangType::Str_litr: {
+    const auto& exprVlu = static_cast<const ExprValue*>(&expr);
+    return std::make_shared<Value>(exprVlu->value().asStr());
+  }
+  case LangType::List:{
+    const auto& exprVlu = static_cast<const ExprValue*>(&expr);
+    return std::make_shared<Value>(exprVlu->value().asList());
+  }
+  case LangType::Str: {// convert to string
+    const auto e = eval(*expr.exprs()[0], funcs, args);
+    return std::make_shared<Value>(e->asStr());
   }
   case LangType::Ident: {
     const auto& exprVlu = static_cast<const ExprIdent*>(&expr);
     auto v = args[exprVlu->localIdx()];
-    std::cout << "Get ident " << expr.token().ident()
-              << " vlu:" << v->asStr() << " type:" << v->typeName() << "\n";
+    //DEBUG("Get ident " << expr.token().ident()
+    //      << " vlu:" << v->asStr() << " type:" << v->typeName() << "\n");
     return v;
   }
 

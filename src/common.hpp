@@ -23,7 +23,7 @@ enum class LangType {
   // The ordering of these must conform to persers requirements
   // single expression
   List, // first in 1
-  Litr, Words,
+  Litr, Str, Words,
   Input, Print, Head, Neg,
   Import,
   Tail, // last in 1
@@ -40,8 +40,8 @@ enum class LangType {
 
   // epsilon
   Value, // first in epsilon
-  Num, True, False, Null,
-  Str, // last in epsilon
+  Num_litr, True_litr, False_litr, Null_litr,
+  Str_litr, // last in epsilon
 
   // special epsilon
   Ident,

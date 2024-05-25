@@ -13,22 +13,23 @@ Value::Value(const Value& other) :
 Value::Value(const Token& tok)
 {
   switch (tok.type()) {
-  case LangType::True: [[fallthrough]];
-  case LangType::False:
+  case LangType::True_litr: [[fallthrough]];
+  case LangType::False_litr:
     _type = ValueTypes::Bool;
     _vlu = tok.value() == "true";
     break;
-  case LangType::Num:
+  case LangType::Num_litr:
     _type = ValueTypes::Num;
     _vlu = std::stod(std::string(tok.value()));
     break;
-  case LangType::Str:
+  case LangType::Str_litr:
     _type = ValueTypes::Str;
     _vlu = std::string(tok.value());
     break;
-  case LangType::Null:  [[fallthrough]];
+  case LangType::Null_litr:  [[fallthrough]];
   default:
     _type = ValueTypes::Null; break;
+    _vlu = nullptr;
   }
 }
 
@@ -238,15 +239,22 @@ std::string Value::asStr() const
     return std::get<bool>(_vlu) ? "true" : "false";
   case ValueTypes::Null:
     return "null";
-  case ValueTypes::Num:
-    return std::to_string(std::get<double>(_vlu));
+  case ValueTypes::Num:{
+    // floating points i C++ is a mess, puh...
+    auto vlu = std::to_string(std::get<double>(_vlu));
+    auto dotPos = vlu.find_first_of('.');
+    vlu.erase(vlu.find_last_not_of('0', dotPos) + 1, std::string::npos);
+    if (vlu.size()-1 == dotPos)
+      vlu.erase(dotPos, std::string::npos);
+    return vlu;
+  }
   case ValueTypes::Str:
     return std::get<std::string>(_vlu);
   case ValueTypes::List: {
     std::vector<std::string> parts;
     for (const auto& itm : std::get<std::vector<Value>>(_vlu))
       parts.emplace_back(itm.asStr());
-    return join(parts);
+    return std::string("[") + join(parts, ", ") + "]";
   }
   }
   return "";
@@ -293,30 +301,6 @@ Value Value::from_str(std::string str)
     // successfully converted
     return Value(dVlu);
   return Value(std::string(str));
-}
-
-std::string_view Value::into_str() const
-{
-  std::stringstream ss;
-  switch (_type) {
-  case ValueTypes::Bool:
-    ss << (std::get<bool>(_vlu) ? "true" : "false");
-    break;
-  case ValueTypes::List:
-    for (const auto& v : std::get<std::vector<Value>>(_vlu))
-      ss << v.into_str();
-    break;
-  case ValueTypes::Null:
-    ss << "null";
-    break;
-  case ValueTypes::Num:
-    ss << std::get<double>(_vlu);
-    break;
-  case ValueTypes::Str:
-    ss << std::get<std::string>(_vlu);
-    break;
-  }
-  return ss.str();
 }
 
 std::shared_ptr<Value> Value::Null_ptr{new Value};

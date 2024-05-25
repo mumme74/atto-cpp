@@ -7,6 +7,9 @@
 #include "errors.hpp"
 #include "modules.hpp"
 
+//#define DEBUG(x) do { std::cerr << x; } while (0)
+#define DEBUG(x)
+
 namespace atto {
 
 // the module being parsed
@@ -220,7 +223,7 @@ std::shared_ptr<Expr> parse_expr(
   auto type = (*tok)->type();
   std::vector<std::shared_ptr<Expr>> exprs;
   std::stringstream ss;
-  //std::cout << (*tok)->line() << " " <<  (*tok)->ident() <<" enter: "<<depth<<'\n';
+  DEBUG((*tok)->line() << " " <<  (*tok)->ident() <<" enter: "<<depth<<'\n');
 
   if (tok == endTok)
     return std::make_shared<Expr>(*tok, LangType::__Finished, exprs);
@@ -228,31 +231,31 @@ std::shared_ptr<Expr> parse_expr(
   // handle one sub thing expressions
   if (type >= LangType::List && type <= LangType::Tail) {
     exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
-    //std::cout << "Leave single out '"<<beginTok->ident()<<"' "<<depth << "\n";
+    DEBUG("Leave single out '"<<beginTok->ident()<<"' "<<depth << "\n");
 
   } else if (type >= LangType::Fuse &&
              type <= LangType::LessEq)
   { // handle 2
     exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
     exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
-    //std::cout << "Leave 2 stuff '"<<beginTok->ident()<<"' "<<depth<<"\n";
+    DEBUG("Leave 2 stuff '"<<beginTok->ident()<<"' "<<depth<<"\n");
 
   } else if (type == LangType::If) {
     // handle if stuff
     exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
     exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
     exprs.emplace_back(parse_expr(++tok, endTok, func_def, depth+1));
-    //std::cout << "leave '"<<beginTok->ident()<<"'"<<depth<<" \n";
+    DEBUG("leave '"<<beginTok->ident()<<"'"<<depth<<" \n");
     ss << "Expected 'operator first second' as condition to if.";
-  } else if (type >= LangType::Value && type <= LangType::Str) {
-    //std::cout << "Leave epsilon '"<<beginTok->ident()<<"' " << depth << "\n";
+  } else if (type >= LangType::Value && type <= LangType::Str_litr) {
+    DEBUG("Leave epsilon '"<<beginTok->ident()<<"' " << depth << "\n");
     return std::make_shared<ExprValue>(beginTok, Value(*beginTok));
   } else if (type == LangType::Ident) {
     auto& args = func_def.second;
     auto arg = std::find(args.begin(), args.end(), (*tok)->ident());
     if (arg != args.end()) {
       //found in argument params
-      //std::cout << "found '" << (*tok)->ident() << "' in args\n";
+      DEBUG("found '" << (*tok)->ident() << "' in args\n");
       return std::make_shared<ExprIdent>(*tok, arg - args.begin());
     }
     // handle function names lookup
@@ -270,10 +273,9 @@ std::shared_ptr<Expr> parse_expr(
         // found in function definitions
         std::vector<std::shared_ptr<Expr>> params;
         const auto& args = fn->second.second;
-        //std::cout << "args for '" << (*tok)->ident() << "' no args:" << args.size() << '\n';
-        for (const auto& a : args) {
-          (void)a;
-          // std::cout<<"get arg "<<a <<"\n";
+        DEBUG("args for '" << (*tok)->ident() << "' no args:" << args.size() << '\n');
+        for (const auto& _ : args) {
+          DEBUG("get arg "<< _ <<"\n"); (void)_;
           auto expr = parse_expr(++tok, endTok, func_def, depth+1);
           if (!expr || expr->isFailed()) {
             ss << "Expected " << args.size() << " arguments in " << fn->first << " call.";
@@ -348,7 +350,7 @@ void parse(std::shared_ptr<Module> module, std::size_t fromTok) {
     auto& func_def = module->funcs()[fnName];
     std::vector<std::shared_ptr<Expr>> fnExprs;
     do {
-      //std::cout << "parsing fn '" << fnName << "'\n";
+      DEBUG("parsing fn '" << fnName << "'\n");
       auto expr = parse_expr(++tok, end, func_def);
       fnExprs.emplace_back(expr);
     } while ((tok+1) != end && (*(tok+1))->type() != LangType::Fn);

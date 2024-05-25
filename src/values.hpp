@@ -61,7 +61,6 @@ public:
 
 
   static Value from_str(std::string str);
-  std::string_view into_str() const;
 
   static Value& Null;
   static std::shared_ptr<Value> Null_ptr;

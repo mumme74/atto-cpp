@@ -17,10 +17,10 @@ public:
   Vm();
   ~Vm();
 
-  std::shared_ptr<Value> eval(
+  std::shared_ptr<const Value> eval(
     const Expr& expr,
     const std::unordered_map<std::string, Module::FuncDef>& funcs,
-    const std::vector<std::shared_ptr<Value>>& args);
+    const std::vector<std::shared_ptr<const Value>>& args);
 };
 
 } // namespace atto
