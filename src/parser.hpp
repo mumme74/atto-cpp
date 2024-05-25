@@ -27,6 +27,7 @@ public:
   Expr& operator=(const Expr& other);
   Expr& operator=(Expr&& rhs);
   const Token& token() const;
+  std::shared_ptr<const Token> tokenPtr() const;
   LangType type() const;
   bool isFailed() const;
   const std::vector<std::shared_ptr<Expr>>& exprs() const;
@@ -64,12 +65,12 @@ class Func : public Expr
   std::vector<std::string> _args;
 public:
   Func(std::shared_ptr<const Token> tok,
-       std::vector<std::string> args,
-       std::vector<std::shared_ptr<Expr>> exprs);
+       std::vector<std::string> args);
   Func(const Func& other);
   Func(Func&& rhs);
   Func& operator=(const Func& other);
   Func& operator=(Func&& rhs);
+  void addExprs(std::vector<std::shared_ptr<Expr>> exprs);
   const std::vector<std::string>& args() const;
   std::string_view fnName() const;
 };

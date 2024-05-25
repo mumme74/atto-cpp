@@ -19,6 +19,7 @@ std::string join(const std::vector<std::string>& parts,
 std::string utf8_substr(const std::string& str,
                         std::size_t from = 0,
                         std::size_t ulen = std::string::npos);
+std::vector<std::string> utf8_words(const std::string& str);
 
 // ---------------------------------------------------------
 

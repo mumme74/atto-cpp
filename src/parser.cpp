@@ -49,6 +49,7 @@ Expr& Expr::operator=(Expr&& rhs) {
 }
 
 const Token& Expr::token() const { return *_tok; }
+std::shared_ptr<const Token> Expr::tokenPtr() const { return _tok; }
 LangType Expr::type() const { return _type; }
 
 bool Expr::isFailed() const {
@@ -125,9 +126,8 @@ std::size_t ExprIdent::localIdx() const { return _localIdx; }
 // ------------------------------------------------------
 
 Func::Func(std::shared_ptr<const Token> tok,
-      std::vector<std::string> args,
-      std::vector<std::shared_ptr<Expr>> exprs) :
-  Expr{tok, LangType::Fn, exprs},
+      std::vector<std::string> args) :
+  Expr{tok, LangType::Fn, std::vector<std::shared_ptr<Expr>>{}},
   _args{args}
 {}
 
@@ -149,6 +149,11 @@ Func& Func::operator=(Func&& rhs) {
   Expr::operator=(std::move(rhs));
   _args = std::move(rhs._args);
   return *this;
+}
+
+void Func::addExprs(std::vector<std::shared_ptr<Expr>> exprs)
+{
+  _exprs.insert(_exprs.end(), exprs.begin(), exprs.end());
 }
 
 const std::vector<std::string>& Func::args() const {
@@ -325,6 +330,8 @@ void parse(std::shared_ptr<Module> module, std::size_t fromTok) {
   for(std::size_t i = 0; i < fromTok && tok != end; ++i)
     ++tok;
 
+  std::unordered_map<std::string, std::shared_ptr<const Token>> funcExprsStarts;
+
   for (; tok != end; ++tok) {
     expect("Expected 'fn' keyword.", *tok,  LangType::Fn);
     auto tokFnName = ++tok;
@@ -344,19 +351,40 @@ void parse(std::shared_ptr<Module> module, std::size_t fromTok) {
     // recursive function
     module->funcs().emplace(
       std::pair<std::string, Module::FuncDef>{
-          fnName, std::pair{std::unique_ptr<Func>{}, args}
+          fnName, std::pair{
+            std::make_unique<Func>(*tokFnName, args), args
+          }
         }
     );
+    DEBUG("defining fn '" << fnName << " " << join(args, " ") << "'\n");
+
+    funcExprsStarts.emplace(
+      std::pair<std::string, std::shared_ptr<const Token>>(
+        fnName, *(++tok)));
+
+    // move to next fn
+    while ((tok+1) != end && (*(tok+1))->type() != LangType::Fn)
+      ++tok;
+  }
+
+  // now that all functions has been defined, parse them
+  // we must define them before parse to make sure we have the signatures
+  for (auto& fnItm : module->funcs()) {
+    const auto& fnName = fnItm.first;
     auto& func_def = module->funcs()[fnName];
+    DEBUG("parsing fn '" << fnName << "'\n");
+    auto& tokens = module->tokens();
+    auto tok = std::find_if(tokens.begin(), tokens.end(),
+      [&](std::shared_ptr<const Token> tok) {
+        return *tok == *funcExprsStarts[fnName];
+      });
     std::vector<std::shared_ptr<Expr>> fnExprs;
     do {
-      DEBUG("parsing fn '" << fnName << "'\n");
-      auto expr = parse_expr(++tok, end, func_def);
+      auto expr = parse_expr(tok, end, func_def);
       fnExprs.emplace_back(expr);
-    } while ((tok+1) != end && (*(tok+1))->type() != LangType::Fn);
+    } while (++tok != end && (*tok)->type() != LangType::Fn);
 
-    func_def.first =
-      std::make_unique<Func>(*tokFnName, args, fnExprs);
+    func_def.first->addExprs(fnExprs);
   }
 }
 

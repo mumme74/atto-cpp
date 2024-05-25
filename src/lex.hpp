@@ -38,6 +38,7 @@ public:
         int line = -1, int col = -1);
   int line() const;
   int col() const;
+  bool operator==(const Token& other) const;
   LangType type() const;
   std::string_view ident() const;
   std::string_view value() const;

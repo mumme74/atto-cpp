@@ -113,9 +113,14 @@ std::shared_ptr<const Value> Vm::eval(
     list.emplace_back(*eval(*expr.exprs()[1], funcs, args));
     return std::make_shared<Value>(list);
   }
-  /*case LangType::Words: {
-
-  }*/
+  case LangType::Words: {
+    auto e = eval(*expr.exprs()[0], funcs, args);
+    if (!e->isStr()) return Value::Null_ptr;
+    std::vector<Value> words;
+    for (const auto& s : utf8_words(e->asStr()))
+      words.emplace_back(s);
+    return std::make_shared<Value>(words);
+  }
   case LangType::Litr: {
     auto v = eval(*expr.exprs()[0], funcs, args);
     return std::make_shared<Value>(Value::from_str(v->asStr()));

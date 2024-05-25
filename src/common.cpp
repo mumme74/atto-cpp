@@ -115,4 +115,27 @@ std::string utf8_substr(const std::string& str,
     return str.substr(from+ufrom, len+ulen);
 }
 
+std::vector<std::string> utf8_words(const std::string& str)
+{
+  std::vector<std::string> words;
+  std::size_t len = str.size(), pos = 0, n = len;
+  bool multibyte = false;
+  const char *start = str.c_str(),
+             *cp = str.c_str(),
+             *end = cp + len;
+
+  for (; cp < end; ++cp) {
+    if (!multibyte && isspace(*cp)) {
+      n = static_cast<std::size_t>(cp-start);
+      words.emplace_back(str.substr(pos, n));
+      pos += n;
+    }
+    multibyte = (*cp & 0x80) != 0;
+  }
+
+  if (static_cast<std::size_t>(cp-start)>pos)
+    words.emplace_back(str.substr(pos));
+  return words;
+}
+
 } // namespace atto

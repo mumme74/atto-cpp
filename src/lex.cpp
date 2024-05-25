@@ -86,6 +86,12 @@ std::string_view Token::value() const
     _ident.substr(1,_ident.length() -1) : _ident;
 }
 
+bool Token::operator==(const Token& other) const
+{
+  return _line == other._line && _col == other._col &&
+         _ident == other._ident && _tokType == other._tokType;
+}
+
 // ----------------------------------------------------
 
 void lex(std::shared_ptr<Module> module, std::size_t from) {
