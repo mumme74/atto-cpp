@@ -13,6 +13,7 @@ namespace atto {
 class Vm {
   void print(std::string_view msg) const;
   Value input(std::string_view msg) const;
+  void import(Module& mod, std::filesystem::path path) const;
 public:
   Vm();
   ~Vm();

@@ -39,8 +39,6 @@ public:
             std::string modName);
   bool execFile(std::filesystem::path path, std::string modName = "__main__");
   void repl();
-protected:
-  std::string readFile(std::filesystem::path, bool & success);
 };
 
 } // namespace atto

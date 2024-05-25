@@ -1,6 +1,7 @@
 #include "vm.hpp"
 #include "common.hpp"
 #include "lib/linenoise.hpp"
+#include "parser.hpp"
 #include <iostream>
 
 //#define DEBUG(x) do { std::cerr << x; } while (0)
@@ -189,6 +190,11 @@ std::shared_ptr<const Value> Vm::eval(
     //DEBUG("Get ident " << expr.token().ident()
     //      << " vlu:" << v->asStr() << " type:" << v->typeName() << "\n");
     return v;
+  }
+  case LangType::Import: {
+    const auto e = eval(*expr.exprs()[0], funcs, args);
+    DEBUG("Importing " << e->asStr() " file" << '\n')
+    expr.module()->import(e->asStr());
   }
 
   default:

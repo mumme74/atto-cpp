@@ -222,7 +222,7 @@ std::shared_ptr<Expr> parse_expr(
   Module::FuncDef& func_def, int depth = 0)
 {
   auto beginTok = *tok;
-  if ((*tok)->type() == LangType::Fn)
+  if (!*tok || (*tok)->type() == LangType::Fn)
     return nullptr;
 
   auto type = (*tok)->type();
@@ -278,13 +278,14 @@ std::shared_ptr<Expr> parse_expr(
         // found in function definitions
         std::vector<std::shared_ptr<Expr>> params;
         const auto& args = fn->second.second;
-        DEBUG("args for '" << (*tok)->ident() << "' no args:" << args.size() << '\n');
+        const auto& callTok = *(*tok);
+        DEBUG("args for '" << callTok.ident() << "' no args:" << args.size() << '\n');
         for (const auto& _ : args) {
           DEBUG("get arg "<< _ <<"\n"); (void)_;
           auto expr = parse_expr(++tok, endTok, func_def, depth+1);
           if (!expr || expr->isFailed()) {
             ss << "Expected " << args.size() << " arguments in " << fn->first << " call.";
-            throw ParseError(ss.str(), curModule, (*tok)->line(), (*tok)->col());
+            throw ParseError(ss.str(), curModule, callTok.line(), callTok.col());
           }
           params.emplace_back(expr);
         }
@@ -323,7 +324,6 @@ std::shared_ptr<Expr> parse_expr(
 }
 
 void parse(std::shared_ptr<Module> module, std::size_t fromTok) {
-  curModule = module;
 
   auto end = module->tokens().end();
   auto tok = module->tokens().begin();
@@ -333,6 +333,14 @@ void parse(std::shared_ptr<Module> module, std::size_t fromTok) {
   std::unordered_map<std::string, std::shared_ptr<const Token>> funcExprsStarts;
 
   for (; tok != end; ++tok) {
+    while ((*tok)->type() == LangType::Import) {
+      const std::filesystem::path path = (*++tok)->value();
+      module->import(path);
+      ++tok;
+    }
+    // set back to our main module after imports are done
+    curModule = module;
+
     expect("Expected 'fn' keyword.", *tok,  LangType::Fn);
     auto tokFnName = ++tok;
 

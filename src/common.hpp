@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <filesystem>
 
 namespace atto {
 
@@ -64,6 +65,8 @@ enum class LexTypes {
 };
 
 std::string_view typeName(LangType type);
+
+std::string readFile(std::filesystem::path path, bool& success);
 
 } // namespace atto
 

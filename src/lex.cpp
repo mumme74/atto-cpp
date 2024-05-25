@@ -153,7 +153,7 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
         incr = false;
         endToken();
       }
-      else if (!isalnum(*cp) || *cp == '.')
+      else if (!isdigit(*cp) || *cp == '.')
         throw syntaxError("Unexpected char in numbers literal");
       break;
     case LexTypes::String:
@@ -171,7 +171,7 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
       break;
     case LexTypes::Ident:
       if (isspace(*cp)) endToken();
-      else if (!isalpha(*cp) && *cp != '_' && *cp != '-')
+      else if (!isalnum(*cp) && *cp != '_' && *cp != '-')
         throw syntaxError("Invalid char in identifier literal");
       break;
     }

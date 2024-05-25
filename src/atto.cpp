@@ -27,17 +27,28 @@ Atto::Atto(std::filesystem::path replHistoryPath,
 {
   linenoise::SetMultiLine(true);
   linenoise::LoadHistory(_replHistoryPath.c_str());
+  auto corePath = fs::path(__FILE__).parent_path().parent_path();
+  corePath.append("atto/core.at");
+  _core_loaded = execFile(corePath, "__core__");
 
-  _core_loaded = execFile("../atto/core.at", "__core__");
-
-  /*linenoise::SetCompletionCallback([](
+  linenoise::SetCompletionCallback([](
     std::string editBuffer, std::vector<std::string>& completions)
   {
-    for (const auto& comp : completions) {
-      if (comp.substr(0, editBuffer.length()) == editBuffer)
+    if (!Module::allModules["__main__"]->path().empty())
+      return; // only complete when in repl mode
 
+    auto pos = editBuffer.find_last_of(" ");
+    const auto str = editBuffer.substr(pos != std::string::npos ? pos+1 : 0);
+    if (editBuffer == "f") completions.emplace_back("fn main is ");
+    if (str == "i") completions.emplace_back(editBuffer + "s");
+    for (const auto& mod : Module::allModules) {
+      for (const auto& fn : mod.second->funcs()) {
+        if (fn.first.substr(0, str.length()) == str)
+          completions.emplace_back(
+            editBuffer + fn.first.substr(str.length()));
+      }
     }
-  });*/
+  });
 }
 
 Atto::~Atto()
@@ -65,9 +76,7 @@ bool Atto::eval(
 ) {
   try {
     auto mod = std::make_shared<Module>(path, code);
-    Module::allModules[modName] = mod;
-    lex(mod);
-    parse(mod);
+    Module::parse(mod, modName);
     const auto& main = mod->funcs()["main"].first;
     if (main) {
       const std::vector<std::shared_ptr<const Value>> args;
@@ -93,7 +102,6 @@ void Atto::repl()
   auto main = std::make_shared<Module>("","");
   Module::allModules["__main__"] = main;
 
-  std::size_t from = 0;
   std::string line;
   bool quit = false;
   while (!(quit = linenoise::Readline(">>", line)) && !quit) {
@@ -101,44 +109,4 @@ void Atto::repl()
     if (line == "quit()") break;
     eval(line, "", "__main__");
   }
-}
-
-std::string Atto::readFile(fs::path path, bool& success)
-{
-  success = false;
-  auto filestat = fs::status(path);
-  if (!fs::exists(path)) {
-    _cerr << "File: " << path << " does not exist.\n";
-    return "";
-  }
-  if (!fs::is_regular_file(filestat)) {
-    _cerr << "File: " << path << " is not a regular file.\n";
-    return "";
-  }
-
-  auto perms = filestat.permissions();
-  if ((perms & fs::perms::owner_read) == fs::perms::none ||
-      (perms & fs::perms::group_read) == fs::perms::none ||
-      (perms & fs::perms::others_read) == fs::perms::none)
-  {
-    _cerr << "Insufficient privileges to access file: " << path << ".\n";
-    return "";
-  }
-
-  if (fs::is_empty(path)) {
-    _cerr << "File: " << path << " is empty.";
-    return "";
-  }
-
-  std::ifstream file;
-  file.open(path, std::ios::in);
-  if (file.is_open()) {
-    std::stringstream ss;
-    ss << file.rdbuf();
-    file.close();
-    success = true;
-    return ss.str();
-  }
-  _cerr << "Failed to open file " << path << '\n';
-  return "";
 }

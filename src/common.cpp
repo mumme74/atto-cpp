@@ -1,9 +1,13 @@
 #include "common.hpp"
 #include "errors.hpp"
 #include <sstream>
+#include <iostream>
+#include <fstream>
 
 
 namespace atto {
+
+namespace fs = std::filesystem;
 
 std::string_view typeName(LangType type)
 {
@@ -137,6 +141,46 @@ std::vector<std::string> utf8_words(const std::string& str)
   if (static_cast<std::size_t>(cp-start)>pos)
     words.emplace_back(str.substr(pos));
   return words;
+}
+
+std::string readFile(std::filesystem::path path, bool& success)
+{
+  success = false;
+  auto filestat = fs::status(path);
+  if (!fs::exists(path)) {
+    std::cerr << "File: " << path << " does not exist.\n";
+    return "";
+  }
+  if (!fs::is_regular_file(filestat)) {
+    std::cerr << "File: " << path << " is not a regular file.\n";
+    return "";
+  }
+
+  auto perms = filestat.permissions();
+  if ((perms & fs::perms::owner_read) == fs::perms::none ||
+      (perms & fs::perms::group_read) == fs::perms::none ||
+      (perms & fs::perms::others_read) == fs::perms::none)
+  {
+    std::cerr << "Insufficient privileges to access file: " << path << ".\n";
+    return "";
+  }
+
+  if (fs::is_empty(path)) {
+    std::cerr << "File: " << path << " is empty.";
+    return "";
+  }
+
+  std::ifstream file;
+  file.open(path, std::ios::in);
+  if (file.is_open()) {
+    std::stringstream ss;
+    ss << file.rdbuf();
+    file.close();
+    success = true;
+    return ss.str();
+  }
+  std::cerr << "Failed to open file " << path << '\n';
+  return "";
 }
 
 } // namespace atto

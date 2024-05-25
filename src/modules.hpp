@@ -24,16 +24,21 @@ private:
   std::unordered_map<std::string,
     std::pair<std::shared_ptr<Func>,
     std::vector<std::string>>> _funcs;
+  bool _parsed;
 public:
-  Module(std::filesystem::path path, std::string code);
+  Module(std::filesystem::path path, std::string code = "");
   ~Module();
 
+  bool isParsed() const;
+  static
+  void parse(std::shared_ptr<Module> mod, std::string modName = "");
   const std::filesystem::path& path() const;
   std::string_view code() const;
   void appendCode(const std::string code); // for REPL
   void addToken(std::shared_ptr<const Token> &tok);
   std::vector<std::shared_ptr<const Token>>& tokens();
   std::unordered_map<std::string, FuncDef>& funcs();
+  void import(std::filesystem::path path);
   std::unordered_map<std::string, std::shared_ptr<Module>> imported;
 
   static
