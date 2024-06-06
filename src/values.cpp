@@ -4,11 +4,22 @@
 #include "values.hpp"
 #include "common.hpp"
 
+#include <iostream>
+//#define DEBUG(x) do { std::cerr << x; } while (0)
+#define DEBUG(x)
+
 namespace atto {
 
 Value::Value(const Value& other) :
   _type{other._type}, _vlu{other._vlu}
-{}
+{
+  switch(other._type) {
+  case ValueTypes::Null: break;
+  case ValueTypes::List: _vlu = other.clone()._vlu; break;
+  default:
+    _vlu = other._vlu;
+  }
+}
 
 Value::Value(const Token& tok)
 {
@@ -34,7 +45,7 @@ Value::Value(const Token& tok)
 }
 
 Value::Value(Value&& rhs) :
-  _type{std::move(rhs._type)}, _vlu{std::move(rhs._vlu)}
+  _type{std::move(rhs._type)}, _vlu{std::move(rhs.clone()._vlu)}
 {}
 
 Value::Value() :
@@ -54,10 +65,17 @@ Value::Value(std::string_view value) :
 {}
 
 Value::Value(std::vector<Value> value) :
-  _type{ValueTypes::List}, _vlu{value}
-{}
+  _type{ValueTypes::List}
+{
+  std::vector<Value> cpy;
+  for (const auto& v : value)
+    cpy.emplace_back(v.clone());
+  _vlu = cpy;
+}
 
-Value::~Value() {}
+Value::~Value() {
+  DEBUG("Delete " << typeName() << " "<< asStr()<< '\n');
+}
 
 Value& Value::operator=(const Value& other)
 {

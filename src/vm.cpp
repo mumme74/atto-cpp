@@ -72,9 +72,12 @@ std::shared_ptr<const Value> Vm::eval(
       *eval(*expr.exprs()[0], funcs, args));
   case LangType::Head: {
     auto v = eval(*expr.exprs()[0], funcs, args);
-    if (v->isList())
-      return std::make_shared<Value>(v->asList().front().clone());
-    else if (v->isStr()) {
+    if (v->isList()){
+      auto vl = v->asList();
+      if (vl.empty())
+        return std::make_shared<Value>(std::move(std::vector<Value>{}));
+      return std::make_shared<Value>(vl.front().clone());
+    } else if (v->isStr()) {
       return std::make_shared<Value>(utf8_substr(v->asStr(), 0, 1));
     }
     return std::make_shared<Value>(*v);
@@ -83,10 +86,11 @@ std::shared_ptr<const Value> Vm::eval(
     auto v = eval(*expr.exprs()[0], funcs, args);
     if (v->isList()) {
       const auto& l = v->asList();
-      if (l.size() < 2) return Value::Null_ptr;
-      std::vector<Value> list; list.reserve(l.size()-1);
-      for (auto it = l.begin()+1; it!=l.end(); ++it)
-        list.emplace_back(it->clone());
+      std::vector<Value> list; list.reserve(l.size());
+      if (l.size() > 1) {
+        for (auto it = l.begin()+1; it!=l.end(); ++it)
+          list.emplace_back(it->clone());
+      }
       return std::make_shared<Value>(std::move(list));
     } else if (v->isStr()) {
       const auto& s = v->asStr();
@@ -193,7 +197,7 @@ std::shared_ptr<const Value> Vm::eval(
   }
   case LangType::Import: {
     const auto e = eval(*expr.exprs()[0], funcs, args);
-    DEBUG("Importing " << e->asStr() " file" << '\n')
+    DEBUG("Importing " << e->asStr() << " file" << '\n');
     expr.module()->import(e->asStr());
   }
 

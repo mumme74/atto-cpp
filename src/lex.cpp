@@ -126,8 +126,9 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
     incr = true;
     if (*cp == '\r' && *(cp+1) == '\n')
       continue; // make sure it is not past end()
-    if (*cp == '\n' && state != LexTypes::String) {
-      if (tokBegin) endToken();
+    if (*cp == '\n') {
+      if (tokBegin && state != LexTypes::String)
+        endToken();
       lineNr++; lineBegin = cp+1;
       continue; // make sure it is not past end()
     }
@@ -138,13 +139,13 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
         cp = code.end(); // bail out
         incr = false;
       }
-      else if (isspace(*cp)) ; // intentional nothing
       else if (*cp == '"') {
         ++cp;
         startToken(LexTypes::String);
         if (*cp == '"') endToken(); // special case empty string
       }
       else if (isdigit(*cp)) startToken(LexTypes::Number);
+      else if (isspace(*cp)) ; // intentional nothing
       else // must be a ident
         startToken(LexTypes::Ident);
       break;

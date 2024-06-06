@@ -279,7 +279,7 @@ std::shared_ptr<Expr> parse_expr(
         std::vector<std::shared_ptr<Expr>> params;
         const auto& args = fn->second.second;
         const auto& callTok = *(*tok);
-        DEBUG("args for '" << callTok.ident() << "' no args:" << args.size() << '\n');
+        DEBUG("args for '" << callTok.ident() << "' num args:" << args.size() << '\n');
         for (const auto& _ : args) {
           DEBUG("get arg "<< _ <<"\n"); (void)_;
           auto expr = parse_expr(++tok, endTok, func_def, depth+1);
@@ -293,12 +293,12 @@ std::shared_ptr<Expr> parse_expr(
       }
       return std::shared_ptr<Call>{};
     };
-    // search in core or this module
+    // search in this module and in core in that order
+    const auto thisMod = lookupFn(tok, curModule);
+    if (thisMod) return thisMod;
     const auto core = lookupFn(
       tok, Module::allModules["__core__"]);
     if (core) return core;
-    const auto thisMod = lookupFn(tok, curModule);
-    if (thisMod) return thisMod;
 
     // search in imported modules
     for (const auto& mod : curModule->imported) {

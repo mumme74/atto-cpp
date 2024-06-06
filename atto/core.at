@@ -87,7 +87,7 @@ fn empty is
 
 fn debug_enabled is
 	# "Whether debugging output should occur"
-	false
+	# false true
 
 fn debug info x is
 	# "Describing the value while returning it."

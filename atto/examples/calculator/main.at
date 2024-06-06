@@ -1,0 +1,31 @@
+
+
+
+fn tokenize_cmd lst remain is
+  # "parse cmd into parts"
+  # debug "tokenize_cmd" lst
+  if = null head remain
+    # print "exiting tokenize_cmd"
+    lst
+  # tokenize_cmd
+      fuse lst head remain
+      tail remain
+  lst
+
+
+fn loop cmd is
+  # debug "loop" cmd
+  if = "" cmd
+    cmd
+  # print tokenize_cmd
+            empty
+            cmd
+  loop
+    input ">>"
+
+fn debug_enabled is true
+
+fn main is
+  # print "Please enter an expression:"
+  # loop " "
+  print "exiting"
