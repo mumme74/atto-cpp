@@ -89,10 +89,15 @@ std::string_view ParseError::typeName() const
 FileIOError::FileIOError(
   std::string what, const Module& module,
   std::filesystem::path path):
-    Error{what, module}
+    Error{what, module}, _path(path)
 {}
 
 std::string_view FileIOError::typeName() const
 {
   return "FileIOError";
+}
+
+std::filesystem::path FileIOError::path() const
+{
+  return _path;
 }

@@ -113,6 +113,8 @@ public:
    * @return std::string_view The name of this error, ie. FileIOError
    */
   virtual std::string_view typeName() const override;
+
+  std::filesystem::path path() const;
 };
 
 } // namespace atto
