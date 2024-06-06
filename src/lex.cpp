@@ -7,7 +7,7 @@ namespace atto {
 
 Token::Token(
   LexTypes type,
-  std::shared_ptr<const Module> module,
+  const Module& module,
   std::string_view ident,
   int line, int col
 ):
@@ -94,11 +94,11 @@ bool Token::operator==(const Token& other) const
 
 // ----------------------------------------------------
 
-void lex(std::shared_ptr<Module> module, std::size_t from) {
+void lex(Module &module, std::size_t from) {
 
   LexTypes state{LexTypes::Default};
   int lineNr = 1;
-  auto code = module->code().substr(from);
+  auto code = module.code().substr(from);
   auto lineBegin = code.begin();
   const char *tokBegin = nullptr,
              *cp = nullptr;
@@ -110,8 +110,8 @@ void lex(std::shared_ptr<Module> module, std::size_t from) {
   auto endToken = [&]() {
     auto ident = code.substr(tokBegin - code.begin(), cp - tokBegin);
     int col = static_cast<int>(tokBegin - lineBegin);
-    auto tok = std::make_shared<const Token>(state, module, ident, lineNr, col);
-    module->addToken(tok);
+    Token tok{state, module, ident, lineNr, col};
+    module.addToken(tok);
     tokBegin = nullptr;
     state = LexTypes::Default;
   };

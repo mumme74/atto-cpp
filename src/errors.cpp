@@ -3,7 +3,7 @@
 using namespace atto;
 
 Error::Error(
-  std::string what, std::shared_ptr<const Module> module
+  std::string what, const Module& module
 ) :
   _what(what), _module{module}
 {}
@@ -20,7 +20,7 @@ std::string_view Error::typeName() const
   return "Error";
 }
 
-std::shared_ptr<const Module> Error::module() const
+const Module& Error::module() const
 {
   return _module;
 }
@@ -29,7 +29,7 @@ std::shared_ptr<const Module> Error::module() const
 
 SyntaxError::SyntaxError(
   std::string what,
-  std::shared_ptr<const Module> module,
+  const Module& module,
   int line, int col
 ) :
   Error{what, module}, _line{line}, _col{col}
@@ -56,7 +56,7 @@ int SyntaxError::col() const
 
 ParseError::ParseError(
   std::string what,
-  std::shared_ptr<const Module> module,
+  const Module& module,
   int line, int col):
     SyntaxError{what, module, line, col}
 {}
@@ -64,4 +64,17 @@ ParseError::ParseError(
 std::string_view ParseError::typeName() const
 {
   return "ParseError";
+}
+
+// --------------------------------------------------------
+
+FileIOError::FileIOError(
+  std::string what, const Module& module,
+  std::filesystem::path path):
+    Error{what, module}
+{}
+
+std::string_view FileIOError::typeName() const
+{
+  return "FileIOError";
 }

@@ -23,21 +23,12 @@ class Atto
 {
 protected:
   std::filesystem::path _replHistoryPath;
-  std::istream &_cin;
-  std::ostream &_cout, &_cerr;
-  bool _core_loaded;
   Vm vm;
 public:
-  Atto(std::filesystem::path replHistoryPath = ".replHistory",
-       std::istream &cin = std::cin,
-       std::ostream &cout = std::cout,
-       std::ostream &cerr = std::cerr);
+  Atto(std::filesystem::path replHistoryPath = ".replHistory");
   ~Atto();
 
-  bool eval(const std::string& code,
-            std::filesystem::path path,
-            std::string modName);
-  bool execFile(std::filesystem::path path, std::string modName = "__main__");
+  const Value execFile(std::filesystem::path path, std::string modName = "__main__");
   void repl();
 };
 

@@ -1,5 +1,8 @@
 #include "atto.hpp"
+#include "values.hpp"
 #include <iostream>
+
+using namespace atto;
 
 void printHelp()
 {
@@ -11,7 +14,7 @@ void printHelp()
 }
 
 int main(int argc, const char *argv[]) {
-  atto::Atto engine;
+  Atto engine;
 
   if (argc == 1) {
     engine.repl();
@@ -20,7 +23,15 @@ int main(int argc, const char *argv[]) {
   } else {
     if (argv[1][0] == '-')
       printHelp();
-    else
-      engine.execFile(argv[1]);
+    else {
+      auto retVlu = engine.execFile(argv[1]);
+      switch (retVlu.type()) {
+      case ValueTypes::Null: return 0;
+      case ValueTypes::Num: return static_cast<int>(retVlu.asNum());
+      case ValueTypes::Bool: return retVlu.asBool() ? 1 : 0;
+      case ValueTypes::Str: return retVlu.asStr().length();
+      default: return 0;
+      }
+    }
   }
 }
