@@ -1,6 +1,8 @@
 #include "modules.hpp"
 #include "common.hpp"
 #include "errors.hpp"
+#include "lex.hpp"
+#include "parser.hpp"
 #include <algorithm>
 
 using namespace atto;
@@ -11,7 +13,7 @@ Module::Module(std::filesystem::path path, const std::string& code) :
 {}
 
 Module::Module(std::filesystem::path path) :
-  Module(path, std::string(""))
+  Module{path, std::string("")}
 {
   if (!path.empty()) {
     bool success = false;
@@ -25,14 +27,57 @@ Module::Module(std::filesystem::path path) :
   }
 }
 
+Module::Module(const std::string& code) :
+  Module{"", code}
+{}
+
+Module::Module():
+  _path{}, _code{},
+  _tokens{}, _imported{},
+  _funcs{}, _parsed{}
+{}
+
+/*Module::Module(const Module& other):
+  _path{other._path}, _code{other._code},
+  _tokens{other._tokens}, _imported{other._imported},
+  _funcs{other._funcs}, _parsed{other._parsed}
+{}*/
+
+Module::Module(Module&& rhs):
+  _path{std::move(rhs._path)}, _code{std::move(rhs._code)},
+  _tokens{std::move(rhs._tokens)}, _imported{std::move(rhs._imported)},
+  _funcs{std::move(rhs._funcs)}, _parsed{std::move(rhs._parsed)}
+{}
+
 Module::~Module() { }
+
+/*Module& Module::operator=(const Module& other)
+{
+  _path = other._path;
+  _code = other._code;
+  _tokens = other._tokens;
+  _imported = other._imported;
+  _funcs = other._funcs;
+  return *this;
+}*/
+
+Module& Module::operator=(Module&& rhs)
+{
+  _path = std::move(rhs._path);
+  _code = std::move(rhs._code);
+  _tokens = std::move(rhs._tokens);
+  _imported = std::move(rhs._imported);
+  _funcs = std::move(rhs._funcs);
+  return *this;
+}
 
 // static
 void Module::parse(Module &mod, std::string modName)
 {
   if (modName.size() == 0)
     modName = mod._path.stem();
-  Module::_allModules[modName] = mod;
+  // we can only have one in memory, take ownership
+  Module::_allModules[modName] = std::move(mod);
   atto::lex(mod);
   atto::parse(mod);
   mod._parsed = true;
@@ -68,31 +113,49 @@ void Module::addToken(const Token &tok)
   _tokens.emplace_back(std::move(tok));
 }
 
-const std::vector<const Token>&
+const std::vector<Token>&
 Module::tokens() const
 {
   return _tokens;
 }
 
 
-const std::unordered_map<std::string, Module::FuncDef>&
+const FuncMap&
 Module::funcs() const
 {
   return _funcs;
 }
 
-const Func&
+const AstFunc&
 Module::func(const std::string& fn) const
 {
-  return *_funcs.at(fn).first;
+  return *_funcs.at(fn).first.get();
+}
+
+FuncDef&
+Module::funcDef(const std::string& fn)
+{
+  return _funcs.at(fn);
+}
+
+const FuncParams&
+Module::funcParams(const std::string& fn) const
+{
+  return _funcs.at(fn).second;
 }
 
 bool Module::hasFunc(const std::string& fn) const
 {
-  auto found = std::find_if(_funcs.begin(), _funcs.end(), [&](auto it){
-    return it->first == fn;
-  });
-  return found != _funcs.end();
+
+  for (const auto& f : _funcs)
+    if (f.first == fn)
+      return true;
+  return false;
+}
+
+void Module::addFunc(const std::string& fn, FuncDef& def)
+{
+  _funcs.emplace(std::pair<std::string, FuncDef>{fn, std::move(def)});
 }
 
 void Module::import(std::filesystem::path path)
@@ -103,25 +166,20 @@ void Module::import(std::filesystem::path path)
   }
 
   // already imported?
-  auto found = std::find(
-    Module::_allModules.begin(),
-    Module::_allModules.end(),
-    path.filename());
-
-  if (found != Module::_allModules.end()) {
-    _imported.emplace_back(found->first);
-    return;
-  }
+  for (const auto& m : Module::_allModules)
+    if (m.second.path() == path) return;
 
   bool success = false;
   const auto code = readFile(path, success);
-  Module newMod(path, code);
-  Module::parse(newMod, path.stem());
-  Module::_allModules[path.stem()] = std::move(newMod);
+ // we can oly have one in memory, store it first, then lookup
+  Module::_allModules.emplace(
+    std::pair<std::string, Module>{path.stem(), Module{path}});
+  auto& mod = Module::_allModules.at(path.stem());
+  Module::parse(mod);
   _imported.emplace_back(path.stem());
 }
 
-const std::vector<const std::string>&
+const std::vector<std::string>&
 Module::imported() const
 {
   return _imported;
@@ -131,9 +189,9 @@ Module::imported() const
 std::unordered_map<std::string, Module> Module::_allModules{};
 
 // static
-std::vector<const std::string> Module::allModuleNames()
+std::vector<std::string> Module::allModuleNames()
 {
-  std::vector<const std::string> names;
+  std::vector<std::string> names;
   for (const auto& [name, _] : Module::_allModules)
     names.emplace_back(name);
   return names;
@@ -147,5 +205,13 @@ Module& Module::module(const std::string& name,
   if (found != Module::_allModules.end())
     return found->second;
 
-  Module::_allModules[name] = std::move(Module(path));
+  // we can oly have one in memory, store it first, then lookup
+  Module::_allModules.emplace(
+    std::pair<std::string, Module>{name, Module{path}});
+  auto& mod = Module::_allModules.at(name);
+  atto::lex(mod);
+  atto::parse(mod);
+  mod._parsed = true;
+
+  return mod;
 }

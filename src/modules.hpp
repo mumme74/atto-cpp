@@ -6,7 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include "lex.hpp"
-#include "parser.hpp"
+#include "ast.hpp"
 
 namespace atto {
 
@@ -15,18 +15,12 @@ namespace atto {
  * All different scripts are loaded as a module
  */
 class Module {
-public:
-  //! All functions in module should have this type
-  using FuncDef = std::pair<
-    std::shared_ptr<Func>, std::vector<std::string>>;
 private:
   std::filesystem::path _path;
   std::string _code;
-  std::vector<const Token> _tokens;
-  std::vector<const std::string> _imported;
-  std::unordered_map<std::string,
-    std::pair<std::shared_ptr<Func>,
-    std::vector<std::string>>> _funcs;
+  std::vector<Token> _tokens;
+  std::vector<std::string> _imported;
+  std::unordered_map<std::string, FuncDef> _funcs;
   bool _parsed;
 
   static
@@ -52,7 +46,14 @@ public:
    * @param code
    */
   Module(const std::string& code);
+
+  Module();
+  Module(const Module& other) = delete;
+  Module(Module&& rhs);
   ~Module();
+
+  Module& operator=(const Module& other) = delete;
+  Module& operator=(Module&& rhs);
 
   /// @return true if module has successfully been parsed
   bool isParsed() const;
@@ -67,26 +68,32 @@ public:
   /// @brief Add a token to the tokens in this module, module takes ownership
   void addToken(const Token &tok);
   /// @brief Get all tokens stored in this module
-  const std::vector<const Token>& tokens() const;
+  const std::vector<Token>& tokens() const;
   /// @brief Get all functions in this module
-  const std::unordered_map<std::string, FuncDef>& funcs() const;
+  const FuncMap& funcs() const;
   /// @brief Get the function fn in this module, throws if not found
-  const const Func& func(const std::string& fn) const;
+  const AstFunc& func(const std::string& fn) const;
+  /// @brief Get the function def as a writable ref from this module, throws if not found
+  FuncDef& funcDef(const std::string& fn);
+  /// @brief Get function params
+  const FuncParams& funcParams(const std::string& fn) const;
   /// @brief Find out if fn exists in this module
   bool hasFunc(const std::string& fn) const;
-  /// @brief import path into this module, loads if necessary
+  /// @brief add a function to this module, used by parser
+  void addFunc(const std::string& fn, FuncDef& def);
+  /// @brief import path into this module, loads and parse if necessary
   void import(std::filesystem::path path);
   /// @brief All modules currently imported to this module.
   /// use as key to allModules to retrieve the actual module.
   /// @return All module names currently imported to this module
-  const std::vector<const std::string>& imported() const;
+  const std::vector<std::string>& imported() const;
 
 
 
   /// @brief AllModules loaded to VM at this time
   /// @return vector with names of all modules
   static
- std::vector<const std::string> allModuleNames();
+ std::vector<std::string> allModuleNames();
 
   static
   void parse(Module& mod, std::string modName = "");

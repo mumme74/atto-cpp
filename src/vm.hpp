@@ -19,8 +19,8 @@ public:
   ~Vm();
 
   std::shared_ptr<const Value> eval(
-    const Expr& expr,
-    const std::unordered_map<std::string, Module::FuncDef>& funcs,
+    const AstBase& expr,
+    const FuncMap& funcs,
     const std::vector<std::shared_ptr<const Value>>& args);
 };
 

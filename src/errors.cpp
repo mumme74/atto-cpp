@@ -1,4 +1,5 @@
 #include "errors.hpp"
+#include "lex.hpp"
 
 using namespace atto;
 
@@ -35,6 +36,14 @@ SyntaxError::SyntaxError(
   Error{what, module}, _line{line}, _col{col}
 {}
 
+SyntaxError::SyntaxError(
+  std::string what,
+  const Module& module,
+  const Token& tok
+) :
+  SyntaxError{what, module, tok.line(), tok.col()}
+{}
+
 SyntaxError::~SyntaxError() {}
 
 std::string_view SyntaxError::typeName() const
@@ -57,8 +66,17 @@ int SyntaxError::col() const
 ParseError::ParseError(
   std::string what,
   const Module& module,
-  int line, int col):
+  int line, int col
+) :
     SyntaxError{what, module, line, col}
+{}
+
+ParseError::ParseError(
+  std::string what,
+  const Module& module,
+  const Token& tok
+) :
+  ParseError(what, module, tok.line(), tok.col())
 {}
 
 std::string_view ParseError::typeName() const

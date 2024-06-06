@@ -78,7 +78,6 @@ std::vector<std::string> split(
   return parts;
 }
 
-
 std::string join(
   const std::vector<std::string>& parts,
   const std::string& joiner)
@@ -94,7 +93,6 @@ std::string join(
 
   return ss.str();
 }
-
 
 std::string utf8_substr(const std::string& str,
                         std::size_t from,

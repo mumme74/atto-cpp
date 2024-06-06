@@ -6,9 +6,11 @@
 #include <filesystem>
 #include <memory>
 
+
 namespace atto {
 
 class Module;
+class Token;
 
 /**
  * @brief Base class for all errors
@@ -54,6 +56,7 @@ public:
    */
   SyntaxError(std::string what, const Module& module,
               int line, int col);
+  SyntaxError(std::string what, const Module& module, const Token& tok);
   ~SyntaxError();
   /**
    * @return std::string_view The name of this error, ie. SyntaxError
@@ -82,6 +85,7 @@ public:
    */
   ParseError(std::string what, const Module& module,
               int line, int col);
+  ParseError(std::string what, const Module& module, const Token& tok);
 
   /**
    * @return std::string_view The name of this error, ie. ParseError

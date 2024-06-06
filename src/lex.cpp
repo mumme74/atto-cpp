@@ -92,6 +92,14 @@ bool Token::operator==(const Token& other) const
          _ident == other._ident && _tokType == other._tokType;
 }
 
+// static
+Token Token::mkFailure()
+{
+  Token tok(LexTypes::Number, Module::module("__main__"), "NaN");
+  tok._tokType = LangType::__Failure;
+  return tok;
+}
+
 // ----------------------------------------------------
 
 void lex(Module &module, std::size_t from) {

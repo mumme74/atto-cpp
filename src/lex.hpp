@@ -47,6 +47,8 @@ public:
   std::string_view ident() const;
   /// @brief Get the value for this token, ie no '"' for this string
   std::string_view value() const;
+
+  static Token mkFailure();
 };
 
 /**
@@ -55,7 +57,7 @@ public:
  * @param module in what module the source is found
  * @param from From what position to begin lex
  */
-void lex(const Module &module, std::size_t from = 0);
+void lex(Module &module, std::size_t from = 0);
 
 } // namespace atto
 

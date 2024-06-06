@@ -20,11 +20,13 @@ const Value eval(const std::function<const Value()> cb) {
   try {
     return cb();
 
-  } catch (const SyntaxError &e) {
+  } catch (SyntaxError &e) {
     auto lines = split(std::string(e.module().code()), "\n");
     std::cerr << e.typeName() << ": in " << e.module().path() << "\n"
           << e.what() << " at line " << e.line() << " col " << e.col() << '\n'
           << lines[e.line()-1] << '\n' << std::setw(e.col()+1) << '^' << "\n";
+  } catch (Error &e) {
+    std::cerr << e.typeName() << ": " << e.what() << "\n";
   }
   return false;
 }
@@ -48,7 +50,7 @@ const Value Atto::execFile(
   std::filesystem::path path, std::string modName)
 {
   auto lambdaEval = [&]() -> const Value {
-    auto mod = Module::module(modName, path);
+    auto& mod = Module::module(modName, path);
     if (mod.hasFunc("main")) {
       const std::vector<std::shared_ptr<const Value>> args;
       return *vm.eval(mod.func("main"), mod.funcs(), args);
@@ -84,7 +86,7 @@ void Atto::repl()
     }
   });
 
-  auto main = Module::module("__main__","");
+  auto& main = Module::module("__main__","");
 
   std::string line;
   bool quit = false;
@@ -97,6 +99,7 @@ void Atto::repl()
         const std::vector<std::shared_ptr<const Value>> args;
         return *vm.eval(main.func("main"), main.funcs(), args);
       }
+      return Value(false);
     };
 
     eval(lambdaEval);
